@@ -12,6 +12,11 @@ terraform {
   }
 }
 
+# Default provider (uses aws_region variable)
+provider "aws" {
+  region = var.aws_region
+}
+
 # Provider alias for us-east-1 (required for ACM certificates used by CloudFront)
 provider "aws" {
   alias  = "us_east_1"
