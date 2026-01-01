@@ -35,7 +35,7 @@ resource "aws_acm_certificate" "cloudfront" {
 }
 
 resource "aws_acm_certificate_validation" "cloudfront" {
-  count = var.wait_for_validation ? 1 : 0
+  count = var.wait_for_validation && var.hosted_zone_id != "" ? 1 : 0
 
   provider = aws.us_east_1
 
@@ -45,19 +45,14 @@ resource "aws_acm_certificate_validation" "cloudfront" {
 
 # Route53 validation records (if hosted zone ID provided)
 # Note: Route53 records are created in the default provider region, not us-east-1
+# Use count with a static key (domain name) to avoid for_each with unknown values
 resource "aws_route53_record" "cert_validation" {
-  for_each = var.hosted_zone_id != "" ? {
-    for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
-  } : {}
+  count = var.hosted_zone_id != "" ? length(aws_acm_certificate.cloudfront.domain_validation_options) : 0
 
   zone_id = var.hosted_zone_id
-  name    = each.value.name
-  type    = each.value.type
-  records = [each.value.record]
+  name    = aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_name
+  type    = aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_type
+  records = [aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_value]
   ttl     = 60
 
   # Allow overwrite for validation records

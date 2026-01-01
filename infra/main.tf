@@ -65,8 +65,9 @@ module "s3_web" {
   bucket_name       = var.web_bucket_name
   enable_versioning = true
   enable_encryption = true
-  enable_logging    = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? true : false
-  log_bucket_name   = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : ""
+  enable_logging    = var.log_bucket_name != "" ? true : false
+  log_bucket_name   = var.log_bucket_name # Use input variable for count, module output will be used in resource
+  log_bucket_id     = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : var.log_bucket_name
   tags              = local.common_tags
 
   depends_on = [module.s3_logs]
@@ -79,8 +80,9 @@ module "s3_images" {
   bucket_name       = var.images_bucket_name
   enable_versioning = false
   enable_encryption = true
-  enable_logging    = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? true : false
-  log_bucket_name   = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : ""
+  enable_logging    = var.log_bucket_name != "" ? true : false
+  log_bucket_name   = var.log_bucket_name # Use input variable for count, module output will be used in resource
+  log_bucket_id     = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : var.log_bucket_name
   tags              = local.common_tags
 
   depends_on = [module.s3_logs]

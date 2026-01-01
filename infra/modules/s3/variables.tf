@@ -22,7 +22,13 @@ variable "enable_logging" {
 }
 
 variable "log_bucket_name" {
-  description = "Name of the bucket for access logs"
+  description = "Name of the bucket for access logs (used for count condition - must be known at plan time)"
+  type        = string
+  default     = ""
+}
+
+variable "log_bucket_id" {
+  description = "ID of the bucket for access logs (can use module output - used for target_bucket)"
   type        = string
   default     = ""
 }

@@ -57,7 +57,7 @@ resource "aws_s3_bucket_logging" "web" {
 
   bucket = aws_s3_bucket.web.id
 
-  target_bucket = var.log_bucket_name
+  target_bucket = var.log_bucket_id != "" ? var.log_bucket_id : var.log_bucket_name
   target_prefix = "s3-access-logs/${var.bucket_name}/"
 }
 
