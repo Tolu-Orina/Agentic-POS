@@ -1,0 +1,90 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+*.egg
+*.whl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars.backup
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform-version
+
+# AWS
+.aws-sam/
+samconfig.toml
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project specific
+datasets/**/*.xlsx
+datasets/**/*.csv
+!datasets/**/products_catalog.csv
+!datasets/**/transactions_history.csv
+!datasets/**/products_catalog_with_images.csv
+datasets/**/image_generation.log
+datasets/**/product_images/*.png
+!datasets/**/product_images/.gitkeep
+
+# Lambda placeholder
+infra/modules/lambda/placeholder.zip
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
