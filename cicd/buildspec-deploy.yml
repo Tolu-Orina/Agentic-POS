@@ -324,23 +324,35 @@ phases:
               done
             fi
             
-            APPLY_EXIT_CODE=0
-            if [ ! -z "$PLAN_FILE" ] && [ -f "$PLAN_FILE" ]; then
-              # Check if it's a valid terraform plan file (not a placeholder)
-              # Real plan files are binary and typically > 100 bytes, placeholders are small text files
-              FILE_SIZE=$(stat -f%z "$PLAN_FILE" 2>/dev/null || stat -c%s "$PLAN_FILE" 2>/dev/null || echo "0")
-              if [ "$FILE_SIZE" -gt 100 ] && terraform show -json "$PLAN_FILE" > /dev/null 2>&1; then
-                echo "Using plan file: $PLAN_FILE (size: $FILE_SIZE bytes)"
-                terraform apply -auto-approve "$PLAN_FILE" || APPLY_EXIT_CODE=$?
-              else
-                echo "WARNING: Plan file appears to be a placeholder or invalid (size: $FILE_SIZE bytes), using fallback apply"
-                terraform apply -auto-approve -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || APPLY_EXIT_CODE=$?
-              fi
-            else
-              echo "WARNING: Plan file not found in artifacts. Running terraform apply directly (not recommended for production)..."
-              echo "This may indicate an issue with artifact passing between stages."
-              terraform apply -auto-approve -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || APPLY_EXIT_CODE=$?
-            fi
+    APPLY_EXIT_CODE=0
+    if [ ! -z "$PLAN_FILE" ] && [ -f "$PLAN_FILE" ]; then
+      # Check if it's a valid terraform plan file (not a placeholder)
+      # Real plan files are binary and typically > 100 bytes, placeholders are small text files
+      FILE_SIZE=$(stat -f%z "$PLAN_FILE" 2>/dev/null || stat -c%s "$PLAN_FILE" 2>/dev/null || echo "0")
+      if [ "$FILE_SIZE" -gt 100 ] && terraform show -json "$PLAN_FILE" > /dev/null 2>&1; then
+        echo "Using plan file: $PLAN_FILE (size: $FILE_SIZE bytes)"
+        
+        # Handle ACM certificate validation records which require two-phase apply
+        # First, try to apply everything
+        terraform apply -auto-approve "$PLAN_FILE" || APPLY_EXIT_CODE=$?
+        
+        # If apply failed due to unknown domain_validation_options, do a two-phase apply
+        if [ $APPLY_EXIT_CODE -ne 0 ]; then
+          echo "First apply had issues. Attempting two-phase apply for ACM certificate validation..."
+          # Phase 1: Apply certificate first (target ACM certificate)
+          terraform apply -auto-approve -target='module.acm_web[0].aws_acm_certificate.cloudfront' -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || true
+          # Phase 2: Apply everything (validation records will now work)
+          terraform apply -auto-approve -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || APPLY_EXIT_CODE=$?
+        fi
+      else
+        echo "WARNING: Plan file appears to be a placeholder or invalid (size: $FILE_SIZE bytes), using fallback apply"
+        terraform apply -auto-approve -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || APPLY_EXIT_CODE=$?
+      fi
+    else
+      echo "WARNING: Plan file not found in artifacts. Running terraform apply directly (not recommended for production)..."
+      echo "This may indicate an issue with artifact passing between stages."
+      terraform apply -auto-approve -var-file="environments/${TF_VAR_environment}/terraform.tfvars" || APPLY_EXIT_CODE=$?
+    fi
             
             if [ $APPLY_EXIT_CODE -eq 0 ]; then
               echo "SUCCESS" > /codebuild/output/deploy_status.txt
