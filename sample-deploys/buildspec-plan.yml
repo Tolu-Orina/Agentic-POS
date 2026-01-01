@@ -1,0 +1,358 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - |
+        # Install Terraform
+        echo "Installing Terraform 1.6.0..."
+        TERRAFORM_VERSION="1.6.0"
+        curl -s -o terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+        unzip -q terraform.zip
+        mv terraform /usr/local/bin/
+        chmod +x /usr/local/bin/terraform
+        terraform --version
+        rm terraform.zip
+        
+        # Install AWS CLI v2 (pre-built binary works on glibc-based systems like Ubuntu)
+        echo "Installing AWS CLI v2..."
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip -q awscliv2.zip
+        ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli
+        aws --version
+        rm -rf aws awscliv2.zip
+        
+        # Install jq
+        apt-get update -qq && apt-get install -y -qq jq
+        jq --version
+  pre_build:
+    commands:
+      - |
+        # Verify Terraform and AWS CLI are available
+        export PATH="/usr/local/bin:/usr/bin:$PATH"
+        terraform --version
+        aws --version
+      - |
+        # Set environment variables
+        # Priority: Explicit TF_VAR_environment (from CodeBuild) > branch detection
+        # Ensure AWS CLI is in PATH for this phase too
+        export PATH="/usr/local/bin:$PATH"
+        if [ ! -z "${TF_VAR_environment}" ]; then
+          echo "Using explicit TF_VAR_environment from CodeBuild: ${TF_VAR_environment}"
+          export TF_VAR_environment="${TF_VAR_environment}"
+        else
+          # Detect branch and set environment variables
+          echo "Detecting Git branch..."
+          BRANCH=""
+          
+          # Method 1: Use GIT_BRANCH environment variable (set by CodePipeline action)
+          if [ ! -z "${GIT_BRANCH}" ]; then
+            BRANCH="${GIT_BRANCH}"
+            echo "Using GIT_BRANCH environment variable: $BRANCH"
+          else
+            # Method 2: Try git rev-parse (works if .git is present)
+            BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            
+            # Method 3: Fallback to default
+            if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
+              echo "WARNING: Could not detect branch, defaulting to develop"
+              BRANCH="develop"  # Default fallback
+            fi
+          fi
+          
+          echo "Detected branch: $BRANCH"
+          
+          # Map branch to environment
+          case "$BRANCH" in
+            develop)
+              export TF_VAR_environment=dev
+              ;;
+            test)
+              export TF_VAR_environment=test
+              ;;
+            main|master)
+              export TF_VAR_environment=prod
+              ;;
+            *)
+              echo "WARNING: Unknown branch $BRANCH, defaulting to dev"
+              export TF_VAR_environment=dev
+              ;;
+          esac
+        fi
+        
+        echo "Environment: $TF_VAR_environment"
+        # Persist for build phase
+        echo "export PATH=\"/usr/local/bin:/usr/bin:\$PATH\"" >> /tmp/env.sh
+        echo "export TF_VAR_environment=$TF_VAR_environment" >> /tmp/env.sh
+            # Initialize exit code file (default to 0 for success)
+            echo "0" > /tmp/plan_exit_code.txt
+            echo "0" > /tmp/import_failed.txt  # Track import failures
+            # Initialize status file and create placeholder artifacts EARLY
+            # This ensures artifacts always exist for CodePipeline, even if build phase fails
+            mkdir -p /codebuild/output/tfplan
+            echo "SUCCESS" > /codebuild/output/plan_status.txt
+            echo "Plan step in progress - placeholder artifact (will be updated in build phase)" > /codebuild/output/tfplan/plan.tfplan
+            echo "Plan step in progress - placeholder artifact (will be updated in build phase)" > /codebuild/output/plan.tfplan
+            echo "Artifacts initialized in pre_build phase to ensure they always exist"
+      - . /tmp/env.sh
+      - echo "Navigating to infra directory..."
+      - cd infra
+  build:
+    commands:
+      - |
+        # Disable exit on error to ensure we always create artifacts
+        set +e
+        # Ensure AWS CLI is in PATH (installed in install phase to /usr/local/bin)
+        export PATH="/usr/local/bin:$PATH"
+        . /tmp/env.sh
+        
+        # Navigate to infra directory - handle different source locations
+        echo "Current directory: $(pwd)"
+        NAVIGATION_FAILED=0
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        else
+          echo "ERROR: Could not find infra directory"
+          echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR}"
+          ls -la
+          echo "1" > /tmp/plan_exit_code.txt
+          echo "FAILED" > /codebuild/output/plan_status.txt
+          NAVIGATION_FAILED=1
+        fi
+        
+        if [ $NAVIGATION_FAILED -eq 0 ]; then
+          echo "Now in directory: $(pwd)"
+          
+          # Ensure we're in infra directory for terraform commands
+          if [ -d "infra" ]; then
+            cd infra
+          elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+            cd "${CODEBUILD_SRC_DIR}/infra"
+          fi
+          
+          echo "Running terraform init..."
+          INIT_EXIT_CODE=0
+          terraform init -backend-config="bucket=umcp-terraform-state" -backend-config="key=${TF_VAR_environment}/terraform.tfstate" -backend-config="region=us-east-1" -backend-config="encrypt=true" -backend-config="dynamodb_table=umcp-terraform-locks" || INIT_EXIT_CODE=$?
+          echo $INIT_EXIT_CODE > /tmp/plan_exit_code.txt
+          mkdir -p /codebuild/output
+          
+          if [ $INIT_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: Terraform init failed"
+            echo "FAILED" > /codebuild/output/plan_status.txt
+          else
+            echo "SUCCESS" > /codebuild/output/plan_status.txt
+            
+            # Attempt to import existing resources BEFORE creating plan
+            # This ensures the plan reflects current state accurately
+            echo "Checking for existing resources that may need import..."
+            
+            # Read bucket name and distribution name from terraform.tfvars
+            BUCKET_NAME=$(grep -E "^web_bucket_name\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
+            DIST_NAME=$(grep -E "^distribution_name\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
+            
+            if [ ! -z "$BUCKET_NAME" ]; then
+              # Try to import S3 bucket if it exists and isn't in state
+              echo "Checking if S3 bucket $BUCKET_NAME exists..."
+              BUCKET_EXISTS=false
+              
+              # Method 1: Try head-bucket with explicit region
+              if aws s3api head-bucket --bucket "$BUCKET_NAME" --region us-east-1 2>&1 > /dev/null; then
+                BUCKET_EXISTS=true
+                echo "✓ S3 bucket $BUCKET_NAME exists in AWS (verified via head-bucket)"
+              # Method 2: Try s3 ls as alternative check
+              elif aws s3 ls "s3://$BUCKET_NAME" 2>&1 | grep -q "$BUCKET_NAME" || aws s3 ls 2>&1 | grep -q "$BUCKET_NAME"; then
+                BUCKET_EXISTS=true
+                echo "✓ S3 bucket $BUCKET_NAME exists in AWS (verified via s3 ls)"
+              # Method 3: Try without region (uses default)
+              elif aws s3api head-bucket --bucket "$BUCKET_NAME" 2>&1 > /dev/null; then
+                BUCKET_EXISTS=true
+                echo "✓ S3 bucket $BUCKET_NAME exists in AWS (verified via head-bucket default region)"
+              else
+                echo "✗ S3 bucket $BUCKET_NAME not found or inaccessible"
+                echo "Debug: Attempting to list buckets to verify access..."
+                aws s3 ls 2>&1 | head -5 || echo "Could not list buckets (may indicate permission issue)"
+              fi
+              
+              if [ "$BUCKET_EXISTS" = "true" ]; then
+                echo "Checking if S3 bucket is in Terraform state..."
+                if terraform state show "module.s3_web.aws_s3_bucket.web" > /dev/null 2>&1; then
+                  echo "✓ S3 bucket already in Terraform state"
+                else
+                  echo "S3 bucket not in state, attempting import..."
+                  IMPORT_OUTPUT=$(terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.s3_web.aws_s3_bucket.web" "$BUCKET_NAME" 2>&1)
+                  IMPORT_EXIT=$?
+                  if [ $IMPORT_EXIT -eq 0 ]; then
+                    echo "✓ Successfully imported S3 bucket $BUCKET_NAME"
+                  else
+                    echo "✗ S3 bucket import failed (exit code: $IMPORT_EXIT):"
+                    echo "$IMPORT_OUTPUT"
+                    # Check if it's a permission error (critical) vs not found (non-critical)
+                    if echo "$IMPORT_OUTPUT" | grep -qiE "(AccessDenied|not authorized|permission|Forbidden)"; then
+                      echo "ERROR: Import failed due to missing IAM permissions. This is a critical error."
+                      echo "1" > /tmp/import_failed.txt
+                    else
+                      echo "WARNING: Import failed but may be non-critical (resource may not exist or has conflicts)"
+                    fi
+                  fi
+                fi
+              fi
+            fi
+            
+            if [ ! -z "$DIST_NAME" ]; then
+              # Try to find and import CloudFront OAC if it exists
+              echo "Checking if CloudFront OAC ${DIST_NAME}-oac exists..."
+              OAC_ID=""
+              
+              # Method 1: Query by name using JMESPath
+              OAC_QUERY_OUTPUT=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='${DIST_NAME}-oac'].Id" --output text 2>&1)
+              OAC_ID=$(echo "$OAC_QUERY_OUTPUT" | grep -v "not found" | grep -v "error" | grep -v "Error" | head -1 | tr -d '\n' | tr -d ' ' | tr -d '\t' | tr -d '\r')
+              
+              # Method 2: List all and grep if method 1 fails
+              if [ -z "$OAC_ID" ] || [ "$OAC_ID" = "None" ] || [ "$OAC_ID" = "" ] || [ "$OAC_ID" = "null" ] || echo "$OAC_QUERY_OUTPUT" | grep -q "not found"; then
+                echo "Trying alternative method to find OAC..."
+                OAC_LIST_OUTPUT=$(aws cloudfront list-origin-access-controls --output json 2>&1)
+                if echo "$OAC_LIST_OUTPUT" | grep -q "${DIST_NAME}-oac"; then
+                  OAC_ID=$(echo "$OAC_LIST_OUTPUT" | grep -A 5 "${DIST_NAME}-oac" | grep -E '"Id"|"id"' | head -1 | sed -E 's/.*"Id":\s*"([^"]+)".*/\1/' | sed -E 's/.*"id":\s*"([^"]+)".*/\1/')
+                fi
+              fi
+              
+              # Method 3: Try with jq if available
+              if [ -z "$OAC_ID" ] || [ "$OAC_ID" = "None" ] || [ "$OAC_ID" = "" ] || [ "$OAC_ID" = "null" ]; then
+                if command -v jq > /dev/null 2>&1; then
+                  echo "Trying third method to find OAC (using jq)..."
+                  OAC_ID=$(aws cloudfront list-origin-access-controls --output json 2>&1 | jq -r ".OriginAccessControlList.Items[] | select(.Name == \"${DIST_NAME}-oac\") | .Id" 2>/dev/null | head -1)
+                fi
+              fi
+              
+              # Validate OAC_ID (should be a short alphanumeric string, not an error message)
+              if [ ! -z "$OAC_ID" ] && [ "$OAC_ID" != "None" ] && [ "$OAC_ID" != "" ] && [ "$OAC_ID" != "null" ] && [ "${#OAC_ID}" -lt 50 ] && ! echo "$OAC_ID" | grep -qE "(error|Error|not found|aws: not found)"; then
+                echo "✓ CloudFront OAC ${DIST_NAME}-oac exists (ID: $OAC_ID)"
+                if terraform state show "module.cloudfront.aws_cloudfront_origin_access_control.s3_oac" > /dev/null 2>&1; then
+                  echo "✓ CloudFront OAC already in Terraform state"
+                else
+                  echo "CloudFront OAC not in state, attempting import..."
+                  IMPORT_OUTPUT=$(terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.cloudfront.aws_cloudfront_origin_access_control.s3_oac" "$OAC_ID" 2>&1)
+                  IMPORT_EXIT=$?
+                  if [ $IMPORT_EXIT -eq 0 ]; then
+                    echo "✓ Successfully imported CloudFront OAC ${DIST_NAME}-oac"
+                  else
+                    echo "✗ CloudFront OAC import failed (exit code: $IMPORT_EXIT):"
+                    echo "$IMPORT_OUTPUT"
+                    # Check if it's a permission error (critical) vs not found (non-critical)
+                    if echo "$IMPORT_OUTPUT" | grep -qiE "(AccessDenied|not authorized|permission|Forbidden)"; then
+                      echo "ERROR: Import failed due to missing IAM permissions. This is a critical error."
+                      echo "1" > /tmp/import_failed.txt
+                    else
+                      echo "WARNING: Import failed but may be non-critical (resource may not exist or has conflicts)"
+                    fi
+                  fi
+                fi
+              else
+                echo "✗ CloudFront OAC ${DIST_NAME}-oac not found in AWS"
+                echo "Debug: Listing all OACs to verify access and naming..."
+                aws cloudfront list-origin-access-controls --output json 2>&1 | head -30 || echo "Could not list OACs (may indicate permission issue)"
+              fi
+            fi
+            
+            # Only run plan if init succeeded
+            echo "Running terraform plan (after import checks)..."
+            PLAN_EXIT_CODE=0
+            terraform plan -var-file="environments/${TF_VAR_environment}/terraform.tfvars" -out=tfplan || PLAN_EXIT_CODE=$?
+            echo $PLAN_EXIT_CODE > /tmp/plan_exit_code.txt
+            
+            # Write status to artifact (always create this file)
+            mkdir -p /codebuild/output
+            if [ $PLAN_EXIT_CODE -eq 0 ]; then
+              echo "SUCCESS" > /codebuild/output/plan_status.txt
+            else
+              echo "FAILED" > /codebuild/output/plan_status.txt
+            fi
+          fi
+        fi
+        
+        # Always create artifact directory and copy/create plan file (even if previous steps failed)
+        echo "Copying plan file to CodePipeline artifacts..."
+        mkdir -p /codebuild/output/tfplan
+        
+        PLAN_EXIT_CODE=$(cat /tmp/plan_exit_code.txt 2>/dev/null || echo "1")
+        if [ -f "tfplan" ] && [ $PLAN_EXIT_CODE -eq 0 ] && [ $NAVIGATION_FAILED -eq 0 ]; then
+          cp tfplan /codebuild/output/tfplan/plan.tfplan
+          cp tfplan /codebuild/output/plan.tfplan
+          echo "Plan file saved to artifacts: /codebuild/output/tfplan/plan.tfplan and /codebuild/output/plan.tfplan"
+        else
+          echo "WARNING: Plan file not found or plan failed, creating placeholder artifact"
+          echo "Plan step failed - deploy will use fallback apply" > /codebuild/output/tfplan/plan.tfplan
+          echo "Plan step failed - deploy will use fallback apply" > /codebuild/output/plan.tfplan
+          echo "Placeholder artifact created (plan step failed with exit code: $PLAN_EXIT_CODE)"
+        fi
+        
+        # Check for import failures (permission errors are critical)
+        IMPORT_FAILED=$(cat /tmp/import_failed.txt 2>/dev/null || echo "0")
+        
+        # Always exit with 0 so artifacts are collected UNLESS there are critical import failures
+        # The status file will indicate if plan failed, and deploy stage will check it
+        if [ $PLAN_EXIT_CODE -ne 0 ]; then
+          echo "ERROR: Terraform plan failed (status saved to plan_status.txt - deploy stage will check this)"
+        fi
+        
+        if [ "$IMPORT_FAILED" = "1" ]; then
+          echo "ERROR: Critical import failure detected (permission error). Failing build."
+          echo "FAILED" > /codebuild/output/plan_status.txt
+          set -e  # Re-enable exit on error
+          exit 1
+        fi
+        
+        set -e  # Re-enable exit on error
+        exit 0
+  post_build:
+    commands:
+      - |
+        # Ensure artifacts are always created, even if build phase failed early
+        # This phase runs even if the build phase exits with an error
+        PLAN_EXIT_CODE=$(cat /tmp/plan_exit_code.txt 2>/dev/null || echo "1")
+        echo "Post-build: Ensuring artifacts exist (exit code: $PLAN_EXIT_CODE)"
+        
+        # Always create artifact directory
+        mkdir -p /codebuild/output/tfplan
+        
+        # Ensure status file exists
+        if [ ! -f "/codebuild/output/plan_status.txt" ]; then
+          if [ $PLAN_EXIT_CODE -eq 0 ]; then
+            echo "SUCCESS" > /codebuild/output/plan_status.txt
+          else
+            echo "FAILED" > /codebuild/output/plan_status.txt
+          fi
+        fi
+        
+        # Check if artifacts were created in build phase
+        if [ ! -f "/codebuild/output/tfplan/plan.tfplan" ]; then
+          echo "WARNING: Artifacts not found, creating placeholder in post_build phase"
+          echo "Plan step failed - deploy will use fallback apply" > /codebuild/output/tfplan/plan.tfplan
+          echo "Plan step failed - deploy will use fallback apply" > /codebuild/output/plan.tfplan
+          echo "Placeholder artifact created in post_build (build phase may have failed early)"
+        else
+          echo "Artifacts already exist from build phase"
+        fi
+        
+        # Check for import failures (permission errors are critical)
+        IMPORT_FAILED=$(cat /tmp/import_failed.txt 2>/dev/null || echo "0")
+        
+        # Always exit with 0 to ensure artifacts are collected UNLESS there are critical import failures
+        # The status file will indicate if plan failed, and deploy stage will check it
+        if [ $PLAN_EXIT_CODE -ne 0 ]; then
+          echo "Build phase failed with exit code: $PLAN_EXIT_CODE (status saved to plan_status.txt)"
+        fi
+        
+        if [ "$IMPORT_FAILED" = "1" ]; then
+          echo "ERROR: Critical import failure detected (permission error). Failing build."
+          echo "FAILED" > /codebuild/output/plan_status.txt
+          exit 1
+        fi
+        
+        exit 0
+artifacts:
+  files:
+    - '**/*'
+  base-directory: /codebuild/output
+

@@ -1,0 +1,1332 @@
+[
+  {
+    "transaction_id": "536370",
+    "timestamp": "2010-12-01T08:45:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 24,
+        "unit_price": 437,
+        "line_total": 10488
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 12,
+        "unit_price": 451,
+        "line_total": 5412
+      }
+    ],
+    "subtotal": 15900,
+    "tax": 1272,
+    "discount_total": 0,
+    "total": 17172,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536382",
+    "timestamp": "2010-12-01T09:45:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 10,
+        "unit_price": 268,
+        "line_total": 2680
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 4,
+        "unit_price": 451,
+        "line_total": 1804
+      }
+    ],
+    "subtotal": 4484,
+    "tax": 358,
+    "discount_total": 0,
+    "total": 4842,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536385",
+    "timestamp": "2010-12-01T09:56:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 22961,
+        "name": "Jam Making Set Printed",
+        "quantity": 12,
+        "unit_price": 190,
+        "line_total": 2280
+      },
+      {
+        "sku": 22960,
+        "name": "Jam Making Set With Jars",
+        "quantity": 6,
+        "unit_price": 501,
+        "line_total": 3006
+      }
+    ],
+    "subtotal": 5286,
+    "tax": 422,
+    "discount_total": 0,
+    "total": 5708,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536386",
+    "timestamp": "2010-12-01T09:57:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": "85099C",
+        "name": "Jumbo Bag Baroque Black White",
+        "quantity": 100,
+        "unit_price": 259,
+        "line_total": 25900
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 100,
+        "unit_price": 247,
+        "line_total": 24700
+      }
+    ],
+    "subtotal": 50600,
+    "tax": 4048,
+    "discount_total": 0,
+    "total": 54648,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536389",
+    "timestamp": "2010-12-01T10:03:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 2",
+    "items": [
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 4,
+        "unit_price": 451,
+        "line_total": 1804
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 4,
+        "unit_price": 437,
+        "line_total": 1748
+      }
+    ],
+    "subtotal": 3552,
+    "tax": 284,
+    "discount_total": 0,
+    "total": 3836,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536395",
+    "timestamp": "2010-12-01T10:47:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 2",
+    "items": [
+      {
+        "sku": 84879,
+        "name": "Assorted Colour Bird Ornament",
+        "quantity": 32,
+        "unit_price": 172,
+        "line_total": 5504
+      },
+      {
+        "sku": 21212,
+        "name": "Pack Of 72 Retrospot Cake Cases",
+        "quantity": 24,
+        "unit_price": 76,
+        "line_total": 1824
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 8,
+        "unit_price": 437,
+        "line_total": 3496
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 8,
+        "unit_price": 451,
+        "line_total": 3608
+      }
+    ],
+    "subtotal": 14432,
+    "tax": 1154,
+    "discount_total": 0,
+    "total": 15586,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536538",
+    "timestamp": "2010-12-01T13:54:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 5,
+        "unit_price": 335,
+        "line_total": 1675
+      },
+      {
+        "sku": 22457,
+        "name": "Natural Slate Heart Chalkboard",
+        "quantity": 2,
+        "unit_price": 358,
+        "line_total": 716
+      },
+      {
+        "sku": 22470,
+        "name": "Heart Of Wicker Large",
+        "quantity": 2,
+        "unit_price": 328,
+        "line_total": 656
+      },
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 8,
+        "unit_price": 195,
+        "line_total": 1560
+      }
+    ],
+    "subtotal": 4607,
+    "tax": 368,
+    "discount_total": 0,
+    "total": 4975,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536597",
+    "timestamp": "2010-12-01T17:35:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 1,
+        "unit_price": 335,
+        "line_total": 335
+      },
+      {
+        "sku": 22384,
+        "name": "Lunch Bag Pink Polkadot",
+        "quantity": 1,
+        "unit_price": 202,
+        "line_total": 202
+      },
+      {
+        "sku": 22197,
+        "name": "Popcorn Holder",
+        "quantity": 6,
+        "unit_price": 103,
+        "line_total": 618
+      },
+      {
+        "sku": 20726,
+        "name": "Lunch Bag Woodland",
+        "quantity": 1,
+        "unit_price": 217,
+        "line_total": 217
+      }
+    ],
+    "subtotal": 1372,
+    "tax": 109,
+    "discount_total": 0,
+    "total": 1481,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536600",
+    "timestamp": "2010-12-02T08:32:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 2",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 6,
+        "unit_price": 311,
+        "line_total": 1866
+      },
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 6,
+        "unit_price": 309,
+        "line_total": 1854
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 6,
+        "unit_price": 325,
+        "line_total": 1950
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 6,
+        "unit_price": 268,
+        "line_total": 1608
+      }
+    ],
+    "subtotal": 7278,
+    "tax": 582,
+    "discount_total": 0,
+    "total": 7860,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536609",
+    "timestamp": "2010-12-02T09:41:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 6,
+        "unit_price": 311,
+        "line_total": 1866
+      },
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 6,
+        "unit_price": 309,
+        "line_total": 1854
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 6,
+        "unit_price": 325,
+        "line_total": 1950
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 6,
+        "unit_price": 268,
+        "line_total": 1608
+      }
+    ],
+    "subtotal": 7278,
+    "tax": 582,
+    "discount_total": 0,
+    "total": 7860,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536612",
+    "timestamp": "2010-12-02T09:44:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 6,
+        "unit_price": 311,
+        "line_total": 1866
+      },
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 6,
+        "unit_price": 309,
+        "line_total": 1854
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 6,
+        "unit_price": 325,
+        "line_total": 1950
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 6,
+        "unit_price": 268,
+        "line_total": 1608
+      }
+    ],
+    "subtotal": 7278,
+    "tax": 582,
+    "discount_total": 0,
+    "total": 7860,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536627",
+    "timestamp": "2010-12-02T10:53:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 2",
+    "items": [
+      {
+        "sku": 22961,
+        "name": "Jam Making Set Printed",
+        "quantity": 12,
+        "unit_price": 190,
+        "line_total": 2280
+      },
+      {
+        "sku": 22423,
+        "name": "Regency Cakestand 3 Tier",
+        "quantity": 4,
+        "unit_price": 1381,
+        "line_total": 5524
+      },
+      {
+        "sku": 22697,
+        "name": "Green Regency Teacup And Saucer",
+        "quantity": 12,
+        "unit_price": 378,
+        "line_total": 4536
+      },
+      {
+        "sku": 22699,
+        "name": "Roses Regency Teacup And Saucer",
+        "quantity": 12,
+        "unit_price": 362,
+        "line_total": 4344
+      }
+    ],
+    "subtotal": 16684,
+    "tax": 1334,
+    "discount_total": 0,
+    "total": 18018,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536628",
+    "timestamp": "2010-12-02T10:54:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 6,
+        "unit_price": 311,
+        "line_total": 1866
+      },
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 6,
+        "unit_price": 309,
+        "line_total": 1854
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 6,
+        "unit_price": 325,
+        "line_total": 1950
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 6,
+        "unit_price": 268,
+        "line_total": 1608
+      }
+    ],
+    "subtotal": 7278,
+    "tax": 582,
+    "discount_total": 0,
+    "total": 7860,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536630",
+    "timestamp": "2010-12-02T10:56:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 6,
+        "unit_price": 311,
+        "line_total": 1866
+      },
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 6,
+        "unit_price": 309,
+        "line_total": 1854
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 6,
+        "unit_price": 325,
+        "line_total": 1950
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 6,
+        "unit_price": 268,
+        "line_total": 1608
+      }
+    ],
+    "subtotal": 7278,
+    "tax": 582,
+    "discount_total": 0,
+    "total": 7860,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536632",
+    "timestamp": "2010-12-02T11:02:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 21931,
+        "name": "Jumbo Storage Bag Suki",
+        "quantity": 10,
+        "unit_price": 273,
+        "line_total": 2730
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 10,
+        "unit_price": 247,
+        "line_total": 2470
+      },
+      {
+        "sku": 22386,
+        "name": "Jumbo Bag Pink Polkadot",
+        "quantity": 10,
+        "unit_price": 259,
+        "line_total": 2590
+      },
+      {
+        "sku": 22961,
+        "name": "Jam Making Set Printed",
+        "quantity": 12,
+        "unit_price": 190,
+        "line_total": 2280
+      }
+    ],
+    "subtotal": 10070,
+    "tax": 805,
+    "discount_total": 0,
+    "total": 10875,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536542",
+    "timestamp": "2010-12-01T14:11:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 22382,
+        "name": "Lunch Bag Spaceboy Design",
+        "quantity": 10,
+        "unit_price": 200,
+        "line_total": 2000
+      },
+      {
+        "sku": 20727,
+        "name": "Lunch Bag Black Skull.",
+        "quantity": 10,
+        "unit_price": 209,
+        "line_total": 2090
+      },
+      {
+        "sku": 22383,
+        "name": "Lunch Bag Suki Design",
+        "quantity": 20,
+        "unit_price": 215,
+        "line_total": 4300
+      },
+      {
+        "sku": 22386,
+        "name": "Jumbo Bag Pink Polkadot",
+        "quantity": 30,
+        "unit_price": 259,
+        "line_total": 7770
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 40,
+        "unit_price": 247,
+        "line_total": 9880
+      },
+      {
+        "sku": "85099C",
+        "name": "Jumbo Bag Baroque Black White",
+        "quantity": 20,
+        "unit_price": 259,
+        "line_total": 5180
+      },
+      {
+        "sku": 22411,
+        "name": "Jumbo Shopper Vintage Red Paisley",
+        "quantity": 30,
+        "unit_price": 268,
+        "line_total": 8040
+      },
+      {
+        "sku": 21931,
+        "name": "Jumbo Storage Bag Suki",
+        "quantity": 40,
+        "unit_price": 273,
+        "line_total": 10920
+      },
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 32,
+        "unit_price": 311,
+        "line_total": 9952
+      }
+    ],
+    "subtotal": 60132,
+    "tax": 4810,
+    "discount_total": 0,
+    "total": 64942,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "536769",
+    "timestamp": "2010-12-02T14:47:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 20724,
+        "name": "Red Retrospot Charlotte Bag",
+        "quantity": 10,
+        "unit_price": 114,
+        "line_total": 1140
+      },
+      {
+        "sku": 20725,
+        "name": "Lunch Bag Red Retrospot",
+        "quantity": 10,
+        "unit_price": 211,
+        "line_total": 2110
+      },
+      {
+        "sku": 21080,
+        "name": "Set/20 Red Retrospot Paper Napkins",
+        "quantity": 24,
+        "unit_price": 109,
+        "line_total": 2616
+      },
+      {
+        "sku": 21212,
+        "name": "Pack Of 72 Retrospot Cake Cases",
+        "quantity": 24,
+        "unit_price": 76,
+        "line_total": 1824
+      },
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 18,
+        "unit_price": 335,
+        "line_total": 6030
+      },
+      {
+        "sku": 22384,
+        "name": "Lunch Bag Pink Polkadot",
+        "quantity": 10,
+        "unit_price": 202,
+        "line_total": 2020
+      },
+      {
+        "sku": 20727,
+        "name": "Lunch Bag Black Skull.",
+        "quantity": 10,
+        "unit_price": 209,
+        "line_total": 2090
+      },
+      {
+        "sku": 22382,
+        "name": "Lunch Bag Spaceboy Design",
+        "quantity": 10,
+        "unit_price": 200,
+        "line_total": 2000
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 8,
+        "unit_price": 451,
+        "line_total": 3608
+      }
+    ],
+    "subtotal": 23438,
+    "tax": 1875,
+    "discount_total": 0,
+    "total": 25313,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "537051",
+    "timestamp": "2010-12-05T11:12:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 3,
+        "unit_price": 311,
+        "line_total": 933
+      },
+      {
+        "sku": 22470,
+        "name": "Heart Of Wicker Large",
+        "quantity": 3,
+        "unit_price": 328,
+        "line_total": 984
+      },
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 2,
+        "unit_price": 195,
+        "line_total": 390
+      },
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 2,
+        "unit_price": 311,
+        "line_total": 622
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 2,
+        "unit_price": 437,
+        "line_total": 874
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 2,
+        "unit_price": 437,
+        "line_total": 874
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 2,
+        "unit_price": 451,
+        "line_total": 902
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 1,
+        "unit_price": 451,
+        "line_total": 451
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 1,
+        "unit_price": 437,
+        "line_total": 437
+      }
+    ],
+    "subtotal": 6467,
+    "tax": 517,
+    "discount_total": 0,
+    "total": 6984,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "537144",
+    "timestamp": "2010-12-05T13:00:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 1,
+        "unit_price": 335,
+        "line_total": 335
+      },
+      {
+        "sku": 22470,
+        "name": "Heart Of Wicker Large",
+        "quantity": 1,
+        "unit_price": 328,
+        "line_total": 328
+      },
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 2,
+        "unit_price": 195,
+        "line_total": 390
+      },
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 1,
+        "unit_price": 335,
+        "line_total": 335
+      },
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 1,
+        "unit_price": 311,
+        "line_total": 311
+      },
+      {
+        "sku": 22197,
+        "name": "Popcorn Holder",
+        "quantity": 4,
+        "unit_price": 103,
+        "line_total": 412
+      },
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 1,
+        "unit_price": 335,
+        "line_total": 335
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 1,
+        "unit_price": 247,
+        "line_total": 247
+      },
+      {
+        "sku": 21931,
+        "name": "Jumbo Storage Bag Suki",
+        "quantity": 1,
+        "unit_price": 273,
+        "line_total": 273
+      }
+    ],
+    "subtotal": 2966,
+    "tax": 237,
+    "discount_total": 0,
+    "total": 3203,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "537642",
+    "timestamp": "2010-12-07T15:33:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22197,
+        "name": "Popcorn Holder",
+        "quantity": 28,
+        "unit_price": 103,
+        "line_total": 2884
+      },
+      {
+        "sku": 22383,
+        "name": "Lunch Bag Suki Design",
+        "quantity": 1,
+        "unit_price": 215,
+        "line_total": 215
+      },
+      {
+        "sku": 22457,
+        "name": "Natural Slate Heart Chalkboard",
+        "quantity": 1,
+        "unit_price": 358,
+        "line_total": 358
+      },
+      {
+        "sku": 22697,
+        "name": "Green Regency Teacup And Saucer",
+        "quantity": 3,
+        "unit_price": 378,
+        "line_total": 1134
+      },
+      {
+        "sku": 22699,
+        "name": "Roses Regency Teacup And Saucer",
+        "quantity": 2,
+        "unit_price": 362,
+        "line_total": 724
+      },
+      {
+        "sku": 47566,
+        "name": "Party Bunting",
+        "quantity": 2,
+        "unit_price": 578,
+        "line_total": 1156
+      },
+      {
+        "sku": 84946,
+        "name": "Antique Silver T-Light Glass",
+        "quantity": 2,
+        "unit_price": 152,
+        "line_total": 304
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 11,
+        "unit_price": 247,
+        "line_total": 2717
+      },
+      {
+        "sku": 20725,
+        "name": "Lunch Bag Red Retrospot",
+        "quantity": 3,
+        "unit_price": 211,
+        "line_total": 633
+      }
+    ],
+    "subtotal": 10125,
+    "tax": 810,
+    "discount_total": 0,
+    "total": 10935,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "537645",
+    "timestamp": "2010-12-07T15:34:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 20725,
+        "name": "Lunch Bag Red Retrospot",
+        "quantity": 8,
+        "unit_price": 211,
+        "line_total": 1688
+      },
+      {
+        "sku": 22197,
+        "name": "Popcorn Holder",
+        "quantity": 24,
+        "unit_price": 103,
+        "line_total": 2472
+      },
+      {
+        "sku": 22386,
+        "name": "Jumbo Bag Pink Polkadot",
+        "quantity": 3,
+        "unit_price": 259,
+        "line_total": 777
+      },
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 2,
+        "unit_price": 195,
+        "line_total": 390
+      },
+      {
+        "sku": 22666,
+        "name": "Recipe Box Pantry Yellow Design",
+        "quantity": 4,
+        "unit_price": 367,
+        "line_total": 1468
+      },
+      {
+        "sku": 22699,
+        "name": "Roses Regency Teacup And Saucer",
+        "quantity": 2,
+        "unit_price": 362,
+        "line_total": 724
+      },
+      {
+        "sku": 22961,
+        "name": "Jam Making Set Printed",
+        "quantity": 1,
+        "unit_price": 190,
+        "line_total": 190
+      },
+      {
+        "sku": 84946,
+        "name": "Antique Silver T-Light Glass",
+        "quantity": 3,
+        "unit_price": 152,
+        "line_total": 456
+      },
+      {
+        "sku": "85099B",
+        "name": "Jumbo Bag Red Retrospot",
+        "quantity": 4,
+        "unit_price": 247,
+        "line_total": 988
+      }
+    ],
+    "subtotal": 9153,
+    "tax": 732,
+    "discount_total": 0,
+    "total": 9885,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "538313",
+    "timestamp": "2010-12-10T13:50:00Z",
+    "user_id": "cashier_001",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 1,
+        "unit_price": 335,
+        "line_total": 335
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 1,
+        "unit_price": 451,
+        "line_total": 451
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 2,
+        "unit_price": 451,
+        "line_total": 902
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 1,
+        "unit_price": 437,
+        "line_total": 437
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 3,
+        "unit_price": 451,
+        "line_total": 1353
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 2,
+        "unit_price": 437,
+        "line_total": 874
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 1,
+        "unit_price": 451,
+        "line_total": 451
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 2,
+        "unit_price": 437,
+        "line_total": 874
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 1,
+        "unit_price": 437,
+        "line_total": 437
+      }
+    ],
+    "subtotal": 6114,
+    "tax": 489,
+    "discount_total": 0,
+    "total": 6603,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "538518",
+    "timestamp": "2010-12-12T16:14:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 1",
+    "items": [
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 1,
+        "unit_price": 195,
+        "line_total": 195
+      },
+      {
+        "sku": 84879,
+        "name": "Assorted Colour Bird Ornament",
+        "quantity": 8,
+        "unit_price": 172,
+        "line_total": 1376
+      },
+      {
+        "sku": 21034,
+        "name": "Rex Cash+Carry Jumbo Shopper",
+        "quantity": 1,
+        "unit_price": 95,
+        "line_total": 95
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 1,
+        "unit_price": 451,
+        "line_total": 451
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 1,
+        "unit_price": 437,
+        "line_total": 437
+      },
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 3,
+        "unit_price": 311,
+        "line_total": 933
+      },
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 3,
+        "unit_price": 335,
+        "line_total": 1005
+      },
+      {
+        "sku": 21931,
+        "name": "Jumbo Storage Bag Suki",
+        "quantity": 2,
+        "unit_price": 273,
+        "line_total": 546
+      },
+      {
+        "sku": 21034,
+        "name": "Rex Cash+Carry Jumbo Shopper",
+        "quantity": 1,
+        "unit_price": 95,
+        "line_total": 95
+      }
+    ],
+    "subtotal": 5133,
+    "tax": 410,
+    "discount_total": 0,
+    "total": 5543,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "538641",
+    "timestamp": "2010-12-13T14:36:00Z",
+    "user_id": "cashier_002",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 20724,
+        "name": "Red Retrospot Charlotte Bag",
+        "quantity": 20,
+        "unit_price": 114,
+        "line_total": 2280
+      },
+      {
+        "sku": 21212,
+        "name": "Pack Of 72 Retrospot Cake Cases",
+        "quantity": 24,
+        "unit_price": 76,
+        "line_total": 1824
+      },
+      {
+        "sku": 21931,
+        "name": "Jumbo Storage Bag Suki",
+        "quantity": 20,
+        "unit_price": 273,
+        "line_total": 5460
+      },
+      {
+        "sku": 22086,
+        "name": "Paper Chain Kit 50'S Christmas",
+        "quantity": 40,
+        "unit_price": 335,
+        "line_total": 13400
+      },
+      {
+        "sku": 22382,
+        "name": "Lunch Bag Spaceboy Design",
+        "quantity": 10,
+        "unit_price": 200,
+        "line_total": 2000
+      },
+      {
+        "sku": 22384,
+        "name": "Lunch Bag Pink Polkadot",
+        "quantity": 10,
+        "unit_price": 202,
+        "line_total": 2020
+      },
+      {
+        "sku": 22423,
+        "name": "Regency Cakestand 3 Tier",
+        "quantity": 16,
+        "unit_price": 1381,
+        "line_total": 22096
+      },
+      {
+        "sku": "85123A",
+        "name": "White Hanging Heart T-Light Holder",
+        "quantity": 32,
+        "unit_price": 311,
+        "line_total": 9952
+      },
+      {
+        "sku": 22077,
+        "name": "6 Ribbons Rustic Charm",
+        "quantity": 36,
+        "unit_price": 220,
+        "line_total": 7920
+      }
+    ],
+    "subtotal": 66952,
+    "tax": 5356,
+    "discount_total": 0,
+    "total": 72308,
+    "payment_method": "mock",
+    "status": "completed"
+  },
+  {
+    "transaction_id": "538660",
+    "timestamp": "2010-12-13T15:37:00Z",
+    "user_id": "cashier_003",
+    "cashier_name": "Cashier 3",
+    "items": [
+      {
+        "sku": 82482,
+        "name": "Wooden Picture Frame White Finish",
+        "quantity": 36,
+        "unit_price": 309,
+        "line_total": 11124
+      },
+      {
+        "sku": "82494L",
+        "name": "Wooden Frame Antique White",
+        "quantity": 24,
+        "unit_price": 325,
+        "line_total": 7800
+      },
+      {
+        "sku": 22697,
+        "name": "Green Regency Teacup And Saucer",
+        "quantity": 1,
+        "unit_price": 378,
+        "line_total": 378
+      },
+      {
+        "sku": 22699,
+        "name": "Roses Regency Teacup And Saucer",
+        "quantity": 4,
+        "unit_price": 362,
+        "line_total": 1448
+      },
+      {
+        "sku": 22697,
+        "name": "Green Regency Teacup And Saucer",
+        "quantity": 3,
+        "unit_price": 378,
+        "line_total": 1134
+      },
+      {
+        "sku": 22727,
+        "name": "Alarm Clock Bakelike Red",
+        "quantity": 8,
+        "unit_price": 437,
+        "line_total": 3496
+      },
+      {
+        "sku": 22726,
+        "name": "Alarm Clock Bakelike Green",
+        "quantity": 8,
+        "unit_price": 451,
+        "line_total": 3608
+      },
+      {
+        "sku": 22469,
+        "name": "Heart Of Wicker Small",
+        "quantity": 10,
+        "unit_price": 195,
+        "line_total": 1950
+      },
+      {
+        "sku": 22470,
+        "name": "Heart Of Wicker Large",
+        "quantity": 6,
+        "unit_price": 328,
+        "line_total": 1968
+      }
+    ],
+    "subtotal": 32906,
+    "tax": 2632,
+    "discount_total": 0,
+    "total": 35538,
+    "payment_method": "mock",
+    "status": "completed"
+  }
+]

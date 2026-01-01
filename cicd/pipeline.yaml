@@ -1,0 +1,466 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Agentic Retail OS CI/CD Pipeline - CodePipeline with GitHub, CodeBuild for Terraform'
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub repository owner/username
+    Default: 'your-github-username'
+  
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository name
+    Default: 'agentic-retail-os'
+  
+  GitHubConnectionArn:
+    Type: String
+    Description: ARN of the CodeStar Connections connection to GitHub (create via console first)
+    # Example: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123def-4567-8901-2345-678901234567
+  
+  S3BucketName:
+    Type: String
+    Description: S3 bucket name for web application deployment (optional - will be fetched from Terraform outputs if not provided)
+    Default: ''
+  
+  CloudFrontDistributionId:
+    Type: String
+    Description: CloudFront distribution ID for cache invalidation (optional - will be fetched from Terraform outputs if not provided)
+    Default: ''
+
+Resources:
+  # S3 Bucket for CodePipeline artifacts
+  PipelineArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: Purpose
+          Value: PipelineArtifacts
+
+  # IAM Role for CodePipeline
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-pipeline-role'
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: ManagedBy
+          Value: CloudFormation
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodePipelinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub '${PipelineArtifactsBucket.Arn}/*'
+                  - !GetAtt PipelineArtifactsBucket.Arn
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource:
+                  - !GetAtt TerraformValidateBuild.Arn
+                  - !GetAtt TerraformPlanBuild.Arn
+                  - !GetAtt TerraformDeployBuild.Arn
+                  - !GetAtt WebAppBuildDev.Arn
+              - Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+
+  # IAM Role for CodeBuild - Terraform Operations
+  CodeBuildTerraformRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-codebuild-terraform-role'
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: ManagedBy
+          Value: CloudFormation
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildTerraformPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !Sub '${PipelineArtifactsBucket.Arn}/*'
+                  - !GetAtt PipelineArtifactsBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:*
+                  - cloudfront:*
+                  - route53:*
+                  - acm:*
+                  - dynamodb:*
+                  - lambda:*
+                  - apigateway:*
+                  - iam:*
+                  - logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+
+  # IAM Role for CodeBuild - Web App Build
+  CodeBuildWebAppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-codebuild-webapp-role'
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: ManagedBy
+          Value: CloudFormation
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildWebAppPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource:
+                  - !Sub '${PipelineArtifactsBucket.Arn}/*'
+                  - !GetAtt PipelineArtifactsBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:*
+                  - cloudfront:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+
+  # CloudWatch Log Groups
+  TerraformValidateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-validate'
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+
+  TerraformPlanLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-plan'
+      RetentionInDays: 7
+
+  TerraformDeployLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-deploy'
+      RetentionInDays: 7
+
+  WebAppBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-webapp-build'
+      RetentionInDays: 7
+
+  # CodeBuild Project - Terraform Validate
+  TerraformValidateBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-validate'
+      Description: 'Terraform format, validate, and lint checks'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: TF_VAR_environment
+            Value: dev
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-validate'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-validate.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformValidateLogGroup
+
+  # CodeBuild Project - Terraform Plan
+  TerraformPlanBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-plan'
+      Description: 'Terraform plan to preview changes'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: TF_VAR_environment
+            Value: dev
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-plan'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-plan.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformPlanLogGroup
+
+  # CodeBuild Project - Terraform Deploy
+  TerraformDeployBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-deploy'
+      Description: 'Terraform apply to deploy infrastructure'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: CloudFrontDistributionId
+            Value: !Ref CloudFrontDistributionId
+          - Name: TF_VAR_environment
+            Value: dev
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-deploy'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-deploy.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformDeployLogGroup
+
+  # CodeBuild Project - Web App Build
+  WebAppBuildDev:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-webapp-build-dev'
+      Description: 'Build and deploy web application to S3 - Dev environment'
+      ServiceRole: !GetAtt CodeBuildWebAppRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: S3_BUCKET
+            Value: !Ref S3BucketName
+          - Name: NODE_ENV
+            Value: production
+          - Name: CloudFrontDistributionId
+            Value: !Ref CloudFrontDistributionId
+          - Name: TF_VAR_environment
+            Value: dev
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/webapp-build-dev'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: web/buildspec.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref WebAppBuildLogGroup
+
+  # Dev Pipeline
+  DevPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      PipelineType: V2
+      Name: !Sub '${AWS::StackName}-dev-pipeline'
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineArtifactsBucket
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: Environment
+          Value: Dev
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceDev
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              OutputArtifacts:
+                - Name: SourceOutputDev
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub '${GitHubOwner}/${GitHubRepo}'
+                BranchName: develop
+                OutputArtifactFormat: CODE_ZIP
+              RunOrder: 1
+        
+        - Name: DeployDev
+          Actions:
+            - Name: TerraformValidateDev
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputDev
+              OutputArtifacts:
+                - Name: TerraformValidateOutputDev
+              Configuration:
+                ProjectName: !Ref TerraformValidateBuild
+              RunOrder: 1
+            
+            - Name: TerraformPlanDev
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputDev
+              OutputArtifacts:
+                - Name: TerraformPlanOutputDev
+              Configuration:
+                ProjectName: !Ref TerraformPlanBuild
+                PrimarySource: SourceOutputDev
+              RunOrder: 2
+            
+            - Name: TerraformDeployDev
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputDev
+                - Name: TerraformPlanOutputDev
+              OutputArtifacts:
+                - Name: TerraformDeployOutputDev
+              Configuration:
+                ProjectName: !Ref TerraformDeployBuild
+                PrimarySource: SourceOutputDev
+              RunOrder: 3
+            
+            - Name: WebAppBuildDev
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputDev
+                - Name: TerraformDeployOutputDev
+              OutputArtifacts:
+                - Name: WebAppBuildOutputDev
+              Configuration:
+                ProjectName: !Ref WebAppBuildDev
+                PrimarySource: SourceOutputDev
+              RunOrder: 4
+
+Outputs:
+  DevPipelineName:
+    Description: Name of the Dev CodePipeline
+    Value: !Ref DevPipeline
+  
+  DevPipelineUrl:
+    Description: URL to the Dev CodePipeline console
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${DevPipeline}/view'
+  
+  ArtifactsBucket:
+    Description: S3 bucket for pipeline artifacts
+    Value: !Ref PipelineArtifactsBucket
+

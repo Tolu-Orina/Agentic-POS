@@ -1,0 +1,34 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo "Installing Node.js dependencies..."
+      - npm ci
+  pre_build:
+    commands:
+      - echo "Building web application..."
+  build:
+    commands:
+      - npm run build
+      - |
+        echo "Deploying to S3 bucket: ${S3_BUCKET}"
+        if [ -z "${S3_BUCKET}" ]; then
+          echo "ERROR: S3_BUCKET environment variable not set"
+          exit 1
+        fi
+        aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+        echo "Deployment complete"
+  post_build:
+    commands:
+      - |
+        if [ ! -z "${CloudFrontDistributionId}" ] && [ "${CloudFrontDistributionId}" != "" ]; then
+          echo "Creating CloudFront invalidation..."
+          aws cloudfront create-invalidation --distribution-id ${CloudFrontDistributionId} --paths "/*"
+        else
+          echo "CloudFront distribution ID not provided, skipping invalidation"
+        fi
+artifacts:
+  files:
+    - '**/*'
+  base-directory: dist
+

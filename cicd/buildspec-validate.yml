@@ -1,0 +1,167 @@
+version: 0.2
+phases:
+  install:
+    commands:
+      - |
+        # Install Terraform
+        echo "Installing Terraform 1.6.0..."
+        TERRAFORM_VERSION="1.6.0"
+        curl -s -o terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" || (echo "ERROR: Failed to download Terraform" && exit 1)
+        unzip -q terraform.zip || (echo "ERROR: Failed to unzip Terraform" && exit 1)
+        mv terraform /usr/local/bin/ || (echo "ERROR: Failed to move Terraform binary" && exit 1)
+        chmod +x /usr/local/bin/terraform || (echo "ERROR: Failed to make Terraform executable" && exit 1)
+        terraform --version || (echo "ERROR: Terraform installation verification failed" && exit 1)
+        rm terraform.zip
+  pre_build:
+    commands:
+      - |
+        # Set environment variables
+        # Priority: Explicit TF_VAR_environment (from CodeBuild) > branch detection
+        if [ ! -z "${TF_VAR_environment}" ]; then
+          echo "Using explicit TF_VAR_environment from CodeBuild: ${TF_VAR_environment}"
+          export TF_VAR_environment="${TF_VAR_environment}"
+        else
+          # Detect branch and set environment variables
+          echo "Detecting Git branch..."
+          BRANCH=""
+          
+          # Method 1: Use GIT_BRANCH environment variable (set by CodePipeline action)
+          if [ ! -z "${GIT_BRANCH}" ]; then
+            BRANCH="${GIT_BRANCH}"
+            echo "Using GIT_BRANCH environment variable: $BRANCH"
+          else
+            # Method 2: Try git rev-parse (works if .git is present)
+            BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            
+            # Method 3: Fallback to default
+            if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
+              echo "WARNING: Could not detect branch, defaulting to develop"
+              BRANCH="develop"  # Default fallback
+            fi
+          fi
+          
+          echo "Detected branch: $BRANCH"
+          
+          # Map branch to environment
+          case "$BRANCH" in
+            develop)
+              export TF_VAR_environment=dev
+              ;;
+            test)
+              export TF_VAR_environment=test
+              ;;
+            main|master)
+              export TF_VAR_environment=prod
+              ;;
+            *)
+              echo "WARNING: Unknown branch $BRANCH, defaulting to dev"
+              export TF_VAR_environment=dev
+              ;;
+          esac
+        fi
+        
+        echo "Environment: $TF_VAR_environment"
+        # Persist for build phase
+        echo "export TF_VAR_environment=$TF_VAR_environment" >> /tmp/env.sh
+      - |
+        echo "Installing tflint..."
+        wget -q https://github.com/terraform-linters/tflint/releases/latest/download/tflint_linux_amd64.zip || (echo "ERROR: Failed to download tflint" && exit 1)
+        unzip -q tflint_linux_amd64.zip || (echo "ERROR: Failed to unzip tflint" && exit 1)
+        chmod +x tflint || (echo "ERROR: Failed to make tflint executable" && exit 1)
+        mv tflint /usr/local/bin/ || (echo "ERROR: Failed to move tflint binary" && exit 1)
+        tflint --version || (echo "ERROR: tflint installation verification failed" && exit 1)
+      - echo "Navigating to infra directory..."
+      - |
+        # Navigate to infra directory - handle different source locations
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        else
+          echo "ERROR: Could not find infra directory in pre_build phase"
+          echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR}"
+          exit 1
+        fi
+      - . /tmp/env.sh
+  build:
+    commands:
+      - . /tmp/env.sh
+      - |
+        # Navigate to infra directory - handle different source locations
+        echo "Current directory: $(pwd)"
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        else
+          echo "ERROR: Could not find infra directory"
+          echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR}"
+          ls -la
+          exit 1
+        fi
+        echo "Now in directory: $(pwd)"
+      - |
+        # Ensure we're in infra directory for terraform commands
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        fi
+        echo "Running terraform fmt -check..."
+        terraform fmt -check -recursive || (echo "Terraform fmt check failed. Run 'terraform fmt' to fix." && exit 1)
+      - |
+        # Validate for the detected environment
+        # Ensure we're in infra directory
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        fi
+        if [ -d "environments/${TF_VAR_environment}" ]; then
+          echo "Validating Terraform configuration for environment: ${TF_VAR_environment}"
+          echo "Running terraform init (backend=false)..."
+          terraform init -backend=false || (echo "ERROR: Terraform init failed" && exit 1)
+          echo "Running terraform validate..."
+          terraform validate || (echo "ERROR: Terraform validate failed" && exit 1)
+        else
+          echo "ERROR: Environment directory environments/${TF_VAR_environment} not found"
+          exit 1
+        fi
+      - |
+        # Ensure we're in infra directory for tflint
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        fi
+        echo "Running tflint..."
+        tflint --init || (echo "ERROR: tflint initialization failed" && exit 1)
+      - |
+        # Run tflint on the specific environment directory
+        # Ensure we're in the infra directory (each command runs in new shell)
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        else
+          echo "ERROR: Could not navigate to infra directory"
+          exit 1
+        fi
+        VAR_FILE="environments/${TF_VAR_environment}/terraform.tfvars"
+        if [ -d "environments/${TF_VAR_environment}" ] && [ -f "$VAR_FILE" ]; then
+          echo "Running tflint with var-file: $VAR_FILE"
+          echo "Current directory: $(pwd)"
+          echo "File path: $VAR_FILE"
+          tflint --format compact --var-file="$VAR_FILE" || (echo "ERROR: Tflint found issues. Please review." && exit 1)
+        else
+          echo "WARNING: Could not run tflint - directory or var file not found"
+          echo "Current directory: $(pwd)"
+          echo "Directory exists: $([ -d "environments/${TF_VAR_environment}" ] && echo 'yes' || echo 'no')"
+          echo "File exists: $([ -f "$VAR_FILE" ] && echo 'yes' || echo 'no')"
+          echo "Listing environments directory:"
+          ls -la environments/ 2>/dev/null || echo "environments directory not found"
+          # Run tflint without var-file as fallback (basic linting only)
+          echo "Running tflint without var-file as fallback..."
+          tflint --format compact || (echo "ERROR: Tflint found issues. Please review." && exit 1)
+        fi
+
