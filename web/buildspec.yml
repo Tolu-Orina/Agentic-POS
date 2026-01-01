@@ -11,12 +11,43 @@ phases:
     commands:
       - npm run build
       - |
-        echo "Deploying to S3 bucket: ${S3_BUCKET}"
-        if [ -z "${S3_BUCKET}" ]; then
-          echo "ERROR: S3_BUCKET environment variable not set"
+        # Determine S3 bucket name
+        S3_BUCKET_NAME="${S3_BUCKET}"
+        
+        # If not provided, try to fetch from Terraform outputs
+        if [ -z "${S3_BUCKET_NAME}" ] || [ "${S3_BUCKET_NAME}" = "" ]; then
+          echo "S3_BUCKET not provided, attempting to fetch from Terraform outputs..."
+          
+          # Navigate to infra directory
+          if [ -d "infra" ]; then
+            cd infra
+          elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+            cd "${CODEBUILD_SRC_DIR}/infra"
+          elif [ -d "${CODEBUILD_SRC_DIR_TerraformDeployOutputDev}/infra" ]; then
+            cd "${CODEBUILD_SRC_DIR_TerraformDeployOutputDev}/infra"
+          fi
+          
+          # Initialize Terraform to read outputs (if in infra directory)
+          if [ -f "main.tf" ]; then
+            ENV="${TF_VAR_environment:-dev}"
+            terraform init -backend-config="bucket=agentic-retail-os-terraform-state" -backend-config="key=${ENV}/terraform.tfstate" -backend-config="region=us-east-1" -backend-config="encrypt=true" -backend-config="dynamodb_table=agentic-retail-os-terraform-locks" > /dev/null 2>&1 || true
+            S3_BUCKET_NAME=$(terraform output -raw web_bucket_id 2>/dev/null || echo "")
+            if [ ! -z "${S3_BUCKET_NAME}" ] && [ "${S3_BUCKET_NAME}" != "" ]; then
+              echo "Found S3 bucket from Terraform outputs: ${S3_BUCKET_NAME}"
+            fi
+            cd - > /dev/null 2>&1 || true
+          fi
+        fi
+        
+        # Final check
+        if [ -z "${S3_BUCKET_NAME}" ] || [ "${S3_BUCKET_NAME}" = "" ]; then
+          echo "ERROR: S3_BUCKET environment variable not set and could not fetch from Terraform outputs"
+          echo "Please provide S3_BUCKET parameter when deploying the pipeline, or ensure Terraform outputs are available"
           exit 1
         fi
-        aws s3 sync dist/ s3://${S3_BUCKET}/ --delete
+        
+        echo "Deploying to S3 bucket: ${S3_BUCKET_NAME}"
+        aws s3 sync dist/ s3://${S3_BUCKET_NAME}/ --delete
         echo "Deployment complete"
   post_build:
     commands:

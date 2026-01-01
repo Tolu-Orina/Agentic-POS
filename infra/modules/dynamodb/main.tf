@@ -13,9 +13,9 @@ terraform {
 
 # Products Table
 resource "aws_dynamodb_table" "products" {
-  name           = "${var.environment}-Products"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "sku"
+  name         = "${var.environment}-Products"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "sku"
 
   attribute {
     name = "sku"
@@ -28,8 +28,9 @@ resource "aws_dynamodb_table" "products" {
   }
 
   global_secondary_index {
-    name     = "category-index"
-    hash_key = "category"
+    name            = "category-index"
+    hash_key        = "category"
+    projection_type = "ALL"
   }
 
   tags = merge(
@@ -42,10 +43,10 @@ resource "aws_dynamodb_table" "products" {
 
 # Transactions Table
 resource "aws_dynamodb_table" "transactions" {
-  name           = "${var.environment}-Transactions"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "transaction_id"
-  range_key      = "timestamp"
+  name         = "${var.environment}-Transactions"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "transaction_id"
+  range_key    = "timestamp"
 
   attribute {
     name = "transaction_id"
@@ -91,10 +92,10 @@ resource "aws_dynamodb_table" "transactions" {
 
 # Inventory_Logs Table
 resource "aws_dynamodb_table" "inventory_logs" {
-  name           = "${var.environment}-Inventory_Logs"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "log_id"
-  range_key      = "timestamp"
+  name         = "${var.environment}-Inventory_Logs"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "log_id"
+  range_key    = "timestamp"
 
   attribute {
     name = "log_id"
@@ -128,9 +129,9 @@ resource "aws_dynamodb_table" "inventory_logs" {
 
 # Restock_Requests Table
 resource "aws_dynamodb_table" "restock_requests" {
-  name           = "${var.environment}-Restock_Requests"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "request_id"
+  name         = "${var.environment}-Restock_Requests"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "request_id"
 
   attribute {
     name = "request_id"
@@ -169,9 +170,9 @@ resource "aws_dynamodb_table" "restock_requests" {
 
 # Invoices Table (Article 2)
 resource "aws_dynamodb_table" "invoices" {
-  name           = "${var.environment}-Invoices"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "invoice_id"
+  name         = "${var.environment}-Invoices"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "invoice_id"
 
   attribute {
     name = "invoice_id"

@@ -22,7 +22,7 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
 resource "aws_cloudfront_distribution" "web" {
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "UMCP Web Application Distribution - ${var.environment}"
+  comment             = "Agentic Retail OS Web Application Distribution - ${var.environment}"
   default_root_object = "index.html"
   price_class         = "PriceClass_100" # Use only North America and Europe
   wait_for_deployment = true             # Wait for distribution to be fully deployed before completing

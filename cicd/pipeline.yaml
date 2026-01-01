@@ -5,17 +5,17 @@ Parameters:
   GitHubOwner:
     Type: String
     Description: GitHub repository owner/username
-    Default: 'your-github-username'
+    Default: 'Tolu-Orina'
   
   GitHubRepo:
     Type: String
     Description: GitHub repository name
-    Default: 'agentic-retail-os'
+    Default: 'Agentic-POS'
   
   GitHubConnectionArn:
     Type: String
     Description: ARN of the CodeStar Connections connection to GitHub (create via console first)
-    # Example: arn:aws:codestar-connections:us-east-1:123456789012:connection/abc123def-4567-8901-2345-678901234567
+    Default: 'arn:aws:codeconnections:us-east-1:159169122827:connection/3a7ecb9b-10b7-4838-947e-5f4268a9c32e'
   
   S3BucketName:
     Type: String
@@ -97,6 +97,10 @@ Resources:
                   - !GetAtt TerraformPlanBuild.Arn
                   - !GetAtt TerraformDeployBuild.Arn
                   - !GetAtt WebAppBuildDev.Arn
+                  - !GetAtt TerraformValidateBuildProd.Arn
+                  - !GetAtt TerraformPlanBuildProd.Arn
+                  - !GetAtt TerraformDeployBuildProd.Arn
+                  - !GetAtt WebAppBuildProd.Arn
               - Effect: Allow
                 Action:
                   - codestar-connections:UseConnection
@@ -223,6 +227,33 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-webapp-build'
+      RetentionInDays: 7
+
+  TerraformValidateLogGroupProd:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-validate-prod'
+      RetentionInDays: 7
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+
+  TerraformPlanLogGroupProd:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-plan-prod'
+      RetentionInDays: 7
+
+  TerraformDeployLogGroupProd:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-terraform-deploy-prod'
+      RetentionInDays: 7
+
+  WebAppBuildLogGroupProd:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${AWS::StackName}-webapp-build-prod'
       RetentionInDays: 7
 
   # CodeBuild Project - Terraform Validate
@@ -355,6 +386,136 @@ Resources:
           Status: ENABLED
           GroupName: !Ref WebAppBuildLogGroup
 
+  # CodeBuild Project - Terraform Validate (Prod)
+  TerraformValidateBuildProd:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-validate-prod'
+      Description: 'Terraform format, validate, and lint checks - Prod'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: TF_VAR_environment
+            Value: prod
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-validate-prod'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-validate.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformValidateLogGroupProd
+
+  # CodeBuild Project - Terraform Plan (Prod)
+  TerraformPlanBuildProd:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-plan-prod'
+      Description: 'Terraform plan to preview changes - Prod'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: TF_VAR_environment
+            Value: prod
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-plan-prod'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-plan.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformPlanLogGroupProd
+
+  # CodeBuild Project - Terraform Deploy (Prod)
+  TerraformDeployBuildProd:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-terraform-deploy-prod'
+      Description: 'Terraform apply to deploy infrastructure - Prod'
+      ServiceRole: !GetAtt CodeBuildTerraformRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: CloudFrontDistributionId
+            Value: !Ref CloudFrontDistributionId
+          - Name: TF_VAR_environment
+            Value: prod
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/terraform-deploy-prod'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/buildspec-deploy.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref TerraformDeployLogGroupProd
+
+  # CodeBuild Project - Web App Build (Prod)
+  WebAppBuildProd:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-webapp-build-prod'
+      Description: 'Build and deploy web application to S3 - Prod environment'
+      ServiceRole: !GetAtt CodeBuildWebAppRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        ImagePullCredentialsType: CODEBUILD
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: S3_BUCKET
+            Value: !Ref S3BucketName
+          - Name: NODE_ENV
+            Value: production
+          - Name: CloudFrontDistributionId
+            Value: !Ref CloudFrontDistributionId
+          - Name: TF_VAR_environment
+            Value: prod
+      Cache:
+        Type: S3
+        Location: !Sub '${PipelineArtifactsBucket}/cache/webapp-build-prod'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: web/buildspec.yml
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref WebAppBuildLogGroupProd
+
   # Dev Pipeline
   DevPipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -451,6 +612,102 @@ Resources:
                 PrimarySource: SourceOutputDev
               RunOrder: 4
 
+  # Prod Pipeline
+  ProdPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      PipelineType: V2
+      Name: !Sub '${AWS::StackName}-prod-pipeline'
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineArtifactsBucket
+      Tags:
+        - Key: Project
+          Value: AgenticRetailOS
+        - Key: Environment
+          Value: Prod
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceProd
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              OutputArtifacts:
+                - Name: SourceOutputProd
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub '${GitHubOwner}/${GitHubRepo}'
+                BranchName: main
+                OutputArtifactFormat: CODE_ZIP
+              RunOrder: 1
+        
+        - Name: DeployProd
+          Actions:
+            - Name: TerraformValidateProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputProd
+              OutputArtifacts:
+                - Name: TerraformValidateOutputProd
+              Configuration:
+                ProjectName: !Ref TerraformValidateBuildProd
+              RunOrder: 1
+            
+            - Name: TerraformPlanProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputProd
+              OutputArtifacts:
+                - Name: TerraformPlanOutputProd
+              Configuration:
+                ProjectName: !Ref TerraformPlanBuildProd
+                PrimarySource: SourceOutputProd
+              RunOrder: 2
+            
+            - Name: TerraformDeployProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputProd
+                - Name: TerraformPlanOutputProd
+              OutputArtifacts:
+                - Name: TerraformDeployOutputProd
+              Configuration:
+                ProjectName: !Ref TerraformDeployBuildProd
+                PrimarySource: SourceOutputProd
+              RunOrder: 3
+            
+            - Name: WebAppBuildProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutputProd
+                - Name: TerraformDeployOutputProd
+              OutputArtifacts:
+                - Name: WebAppBuildOutputProd
+              Configuration:
+                ProjectName: !Ref WebAppBuildProd
+                PrimarySource: SourceOutputProd
+              RunOrder: 4
+
 Outputs:
   DevPipelineName:
     Description: Name of the Dev CodePipeline
@@ -463,4 +720,12 @@ Outputs:
   ArtifactsBucket:
     Description: S3 bucket for pipeline artifacts
     Value: !Ref PipelineArtifactsBucket
+  
+  ProdPipelineName:
+    Description: Name of the Prod CodePipeline
+    Value: !Ref ProdPipeline
+  
+  ProdPipelineUrl:
+    Description: URL to the Prod CodePipeline console
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${ProdPipeline}/view'
 

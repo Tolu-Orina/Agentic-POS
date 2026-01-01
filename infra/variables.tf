@@ -42,13 +42,13 @@ variable "log_bucket_name" {
 }
 
 variable "base_domain" {
-  description = "Base domain name (optional, for Route53)"
+  description = "Base domain name (e.g., agentic-pos.conquerorfoundation.com)"
   type        = string
   default     = ""
 }
 
 variable "hosted_zone_id" {
-  description = "Route53 hosted zone ID (optional)"
+  description = "Route53 hosted zone ID for the base domain"
   type        = string
   default     = ""
 }

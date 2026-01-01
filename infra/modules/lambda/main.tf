@@ -73,7 +73,7 @@ resource "aws_iam_role_policy" "dynamodb" {
 data "archive_file" "placeholder" {
   type        = "zip"
   output_path = "${path.module}/placeholder.zip"
-  
+
   source {
     content  = "exports.handler = async (event) => { return { statusCode: 200, body: JSON.stringify({ message: 'Placeholder - deploy via CI/CD' }) }; };"
     filename = "index.js"

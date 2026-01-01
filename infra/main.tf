@@ -5,10 +5,17 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+      source                = "hashicorp/aws"
+      version               = "~> 5.0"
+      configuration_aliases = [aws.us_east_1]
     }
   }
+}
+
+# Provider alias for us-east-1 (required for ACM certificates used by CloudFront)
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
 }
 
 # Local variables
@@ -38,7 +45,7 @@ module "s3_web" {
 
   bucket_name       = var.web_bucket_name
   enable_versioning = true
-  enable_encryption  = true
+  enable_encryption = true
   enable_logging    = var.log_bucket_name != "" ? true : false
   log_bucket_name   = var.log_bucket_name
   tags              = local.common_tags
@@ -50,32 +57,64 @@ module "s3_images" {
 
   bucket_name       = var.images_bucket_name
   enable_versioning = false
-  enable_encryption  = true
+  enable_encryption = true
   enable_logging    = var.log_bucket_name != "" ? true : false
   log_bucket_name   = var.log_bucket_name
   tags              = local.common_tags
+}
+
+# ACM Module - SSL Certificate for Web Application (if domain provided)
+module "acm_web" {
+  source = "./modules/acm"
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  count = var.base_domain != "" && var.create_certificate ? 1 : 0
+
+  domain_name               = var.base_domain != "" ? (var.environment == "prod" ? var.base_domain : "${var.environment}.${var.base_domain}") : ""
+  subject_alternative_names = []
+  hosted_zone_id            = var.hosted_zone_id
+  wait_for_validation       = true
+  tags                      = local.common_tags
 }
 
 # CloudFront Module - Web Application
 module "cloudfront_web" {
   source = "./modules/cloudfront"
 
-  distribution_name = var.web_distribution_name
-  bucket_id         = module.s3_web.bucket_id
-  bucket_arn        = module.s3_web.bucket_arn
-  bucket_domain     = module.s3_web.bucket_regional_domain_name
-  tags              = local.common_tags
+  distribution_name     = var.web_distribution_name
+  s3_bucket_id          = module.s3_web.bucket_id
+  s3_bucket_domain_name = module.s3_web.bucket_regional_domain_name
+  domain_name           = var.base_domain != "" ? (var.environment == "prod" ? var.base_domain : "${var.environment}.${var.base_domain}") : ""
+  certificate_arn       = var.base_domain != "" && var.create_certificate && length(module.acm_web) > 0 ? module.acm_web[0].certificate_arn : ""
+  environment           = local.environment
+  tags                  = local.common_tags
 }
 
 # CloudFront Module - Product Images
 module "cloudfront_images" {
   source = "./modules/cloudfront"
 
-  distribution_name = var.images_distribution_name
-  bucket_id         = module.s3_images.bucket_id
-  bucket_arn        = module.s3_images.bucket_arn
-  bucket_domain     = module.s3_images.bucket_regional_domain_name
-  tags              = local.common_tags
+  distribution_name     = var.images_distribution_name
+  s3_bucket_id          = module.s3_images.bucket_id
+  s3_bucket_domain_name = module.s3_images.bucket_regional_domain_name
+  domain_name           = "" # Images don't need custom domain
+  certificate_arn       = ""
+  environment           = local.environment
+  tags                  = local.common_tags
+}
+
+# Route53 Module - DNS Records for Web Application
+module "route53_web" {
+  source = "./modules/route53"
+
+  count = var.base_domain != "" && var.hosted_zone_id != "" ? 1 : 0
+
+  domain_name               = var.environment == "prod" ? var.base_domain : "${var.environment}.${var.base_domain}"
+  hosted_zone_id            = var.hosted_zone_id
+  cloudfront_domain_name    = module.cloudfront_web.distribution_domain_name
+  cloudfront_hosted_zone_id = "Z2FDTNDATAQYW2" # CloudFront's global hosted zone ID
 }
 
 # API Gateway Module
@@ -119,7 +158,10 @@ module "lambda_auth" {
 module "iam" {
   source = "./modules/iam"
 
-  environment = local.environment
-  tags        = local.common_tags
+  name_prefix                 = "agentic-retail-os-${local.environment}"
+  s3_bucket_arn               = module.s3_web.bucket_arn
+  cloudfront_distribution_id  = module.cloudfront_web.distribution_id
+  cloudfront_distribution_arn = module.cloudfront_web.distribution_arn
+  tags                        = local.common_tags
 }
 

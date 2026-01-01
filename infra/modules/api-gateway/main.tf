@@ -18,7 +18,7 @@ resource "aws_apigatewayv2_api" "main" {
   description   = "API Gateway for Agentic Retail OS"
 
   cors_configuration {
-    allow_origins = ["*"]  # Configure appropriately for production
+    allow_origins = ["*"] # Configure appropriately for production
     allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allow_headers = ["content-type", "authorization"]
     max_age       = 300
