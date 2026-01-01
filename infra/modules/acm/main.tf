@@ -59,9 +59,11 @@ resource "aws_route53_record" "cert_validation" {
 
   zone_id = var.hosted_zone_id
   # Reference domain_validation_options in attributes (Terraform handles unknown values here)
-  name    = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_name if dvo.domain_name == each.key][0]
-  type    = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_type if dvo.domain_name == each.key][0]
-  records = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_value if dvo.domain_name == each.key][0]
+  # Find the matching validation option for this domain
+  name = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_name if dvo.domain_name == each.key][0]
+  type = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_type if dvo.domain_name == each.key][0]
+  # records expects a list of strings - keep the filtered result as a list (single element)
+  records = [for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.resource_record_value if dvo.domain_name == each.key]
   ttl     = 60
 
   # Allow overwrite for validation records
