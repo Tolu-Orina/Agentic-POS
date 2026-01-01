@@ -44,6 +44,20 @@ module "dynamodb" {
   tags        = local.common_tags
 }
 
+# S3 Module - Log Bucket (if logging is enabled)
+module "s3_logs" {
+  source = "./modules/s3"
+
+  count = var.log_bucket_name != "" ? 1 : 0
+
+  bucket_name       = var.log_bucket_name
+  enable_versioning = false
+  enable_encryption = true
+  enable_logging    = false # Log bucket doesn't log to itself
+  log_bucket_name   = ""
+  tags              = local.common_tags
+}
+
 # S3 Module - Web Application
 module "s3_web" {
   source = "./modules/s3"
@@ -51,9 +65,11 @@ module "s3_web" {
   bucket_name       = var.web_bucket_name
   enable_versioning = true
   enable_encryption = true
-  enable_logging    = var.log_bucket_name != "" ? true : false
-  log_bucket_name   = var.log_bucket_name
+  enable_logging    = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? true : false
+  log_bucket_name   = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : ""
   tags              = local.common_tags
+
+  depends_on = [module.s3_logs]
 }
 
 # S3 Module - Product Images
@@ -63,9 +79,11 @@ module "s3_images" {
   bucket_name       = var.images_bucket_name
   enable_versioning = false
   enable_encryption = true
-  enable_logging    = var.log_bucket_name != "" ? true : false
-  log_bucket_name   = var.log_bucket_name
+  enable_logging    = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? true : false
+  log_bucket_name   = var.log_bucket_name != "" && length(module.s3_logs) > 0 ? module.s3_logs[0].bucket_id : ""
   tags              = local.common_tags
+
+  depends_on = [module.s3_logs]
 }
 
 # ACM Module - SSL Certificate for Web Application (if domain provided)
