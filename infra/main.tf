@@ -10,6 +10,17 @@ terraform {
       configuration_aliases = [aws.us_east_1]
     }
   }
+
+  # Backend configuration - values are overridden by -backend-config flags in buildspecs
+  # This allows the same configuration to work across different environments
+  backend "s3" {
+    # These values will be overridden by -backend-config flags:
+    # -backend-config="bucket=agentic-retail-os-terraform-state"
+    # -backend-config="key=${TF_VAR_environment}/terraform.tfstate"
+    # -backend-config="region=us-east-1"
+    # -backend-config="encrypt=true"
+    # -backend-config="dynamodb_table=agentic-retail-os-terraform-locks"
+  }
 }
 
 # Default provider (uses aws_region variable)
