@@ -45,14 +45,22 @@ resource "aws_acm_certificate_validation" "cloudfront" {
 
 # Route53 validation records (if hosted zone ID provided)
 # Note: Route53 records are created in the default provider region, not us-east-1
-# Use count with a static key (domain name) to avoid for_each with unknown values
+# This follows the AWS Terraform provider documentation pattern
+# Note: This requires a two-phase apply - first apply creates the certificate,
+# second apply creates the validation records once domain_validation_options is available
 resource "aws_route53_record" "cert_validation" {
-  count = var.hosted_zone_id != "" ? length(aws_acm_certificate.cloudfront.domain_validation_options) : 0
+  for_each = var.hosted_zone_id != "" ? {
+    for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  } : {}
 
   zone_id = var.hosted_zone_id
-  name    = aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_name
-  type    = aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_type
-  records = [aws_acm_certificate.cloudfront.domain_validation_options[count.index].resource_record_value]
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
   ttl     = 60
 
   # Allow overwrite for validation records
