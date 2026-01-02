@@ -1,10 +1,13 @@
 version: 0.2
+
 phases:
   install:
+    runtime-versions:
+      nodejs: 20
     commands:
-      - echo "Installing Node.js dependencies..."
       - |
-        # Navigate to web directory (handle different source locations)
+        echo "Installing dependencies..."
+        # Navigate to web directory - handle different source locations
         if [ -d "web" ]; then
           cd web
         elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
@@ -16,104 +19,238 @@ phases:
           exit 1
         fi
         echo "Current directory: $(pwd)"
-        echo "Checking for package.json and package-lock.json..."
-        ls -la package.json package-lock.json 2>/dev/null || echo "WARNING: package files not found"
-        npm ci
+        # Ensure devDependencies are installed by setting NODE_ENV=development
+        # npm ci skips devDependencies if NODE_ENV=production
+        export NODE_ENV=development
+        npm ci || (echo "ERROR: npm ci failed" && exit 1)
+        # Verify node_modules exists and show what was installed
+        echo "Verifying installation..."
+        if [ -d "node_modules/.bin" ]; then
+          echo "node_modules/.bin exists. Contents:"
+          ls -la node_modules/.bin/ | head -15
+        else
+          echo "ERROR: node_modules/.bin not found!"
+          exit 1
+        fi
+        # Verify vite and tsc binaries exist
+        if [ ! -f "node_modules/.bin/vite" ]; then
+          echo "ERROR: vite binary not found in node_modules/.bin"
+          echo "Checking if vite package is installed..."
+          ls -la node_modules/vite/ 2>/dev/null || echo "vite package not found"
+          exit 1
+        fi
+        if [ ! -f "node_modules/.bin/tsc" ]; then
+          echo "ERROR: tsc binary not found in node_modules/.bin"
+          echo "Checking if typescript package is installed..."
+          ls -la node_modules/typescript/ 2>/dev/null || echo "typescript package not found"
+          exit 1
+        fi
+        echo "✓ vite and tsc binaries found"
+
   pre_build:
     commands:
       - |
-        # Ensure we're in web directory
+        # Navigate to web directory (each command runs in new shell)
+        if [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        else
+          echo "ERROR: Could not find web directory"
+          exit 1
+        fi
+        # Set environment variables
+        # Priority: Explicit TF_VAR_environment (from CodeBuild) > branch detection
+        if [ ! -z "${TF_VAR_environment}" ]; then
+          echo "Using explicit TF_VAR_environment from CodeBuild: ${TF_VAR_environment}"
+          export TF_VAR_environment="${TF_VAR_environment}"
+        else
+          # Detect branch and set environment variables
+          echo "Detecting Git branch..."
+          BRANCH=""
+          
+          # Method 1: Use GIT_BRANCH environment variable (set by CodePipeline action)
+          if [ ! -z "${GIT_BRANCH}" ]; then
+            BRANCH="${GIT_BRANCH}"
+            echo "Using GIT_BRANCH environment variable: $BRANCH"
+          else
+            # Method 2: Try git rev-parse (works if .git is present)
+            BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            
+            # Method 3: Fallback to default
+            if [ -z "$BRANCH" ] || [ "$BRANCH" = "HEAD" ]; then
+              echo "WARNING: Could not detect branch, defaulting to develop"
+              BRANCH="develop"  # Default fallback
+            fi
+          fi
+          
+          echo "Detected branch: $BRANCH"
+          
+          # Map branch to environment
+          case "$BRANCH" in
+            develop)
+              export TF_VAR_environment=dev
+              ;;
+            test)
+              export TF_VAR_environment=test
+              ;;
+            main|master)
+              export TF_VAR_environment=prod
+              ;;
+            *)
+              echo "WARNING: Unknown branch $BRANCH, defaulting to dev"
+              export TF_VAR_environment=dev
+              ;;
+          esac
+        fi
+        
+        echo "Environment: $TF_VAR_environment"
+        # Persist for post_build phase
+        echo "export TF_VAR_environment=$TF_VAR_environment" >> /tmp/env.sh
+        # Persist web directory path
+        echo "export WEB_DIR=$(pwd)" >> /tmp/env.sh
+
+      - . /tmp/env.sh
+
+      - |
+        # Ensure we're in web directory for linting
         if [ -d "web" ]; then
           cd web
         elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
           cd "${CODEBUILD_SRC_DIR}/web"
         fi
-        echo "Building web application..."
+        # Add node_modules/.bin to PATH explicitly
+        export PATH="$(pwd)/node_modules/.bin:$PATH"
+        echo "Running linting..."
+        echo "PATH includes: $(echo $PATH | tr ':' '\n' | grep node_modules)"
+        npm run lint || echo "WARNING: Linting found issues, but continuing build"
+
   build:
     commands:
       - |
-        # Ensure we're in web directory
+        # Ensure we're in web directory for build
         if [ -d "web" ]; then
           cd web
         elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
           cd "${CODEBUILD_SRC_DIR}/web"
-        fi
-        echo "Current directory: $(pwd)"
-        echo "Checking for node_modules and TypeScript..."
-        if [ -f "node_modules/.bin/tsc" ]; then
-          echo "TypeScript found in node_modules/.bin/tsc"
         else
-          echo "ERROR: TypeScript not found. Checking node_modules..."
-          ls -la node_modules/.bin/ 2>/dev/null | head -10 || echo "node_modules/.bin/ does not exist"
-          echo "Re-running npm install to ensure dev dependencies are installed..."
-          npm install
+          echo "ERROR: Could not find web directory"
+          exit 1
         fi
-        # Explicitly add node_modules/.bin to PATH (npm should do this, but being explicit)
+        # Add node_modules/.bin to PATH explicitly
         export PATH="$(pwd)/node_modules/.bin:$PATH"
-        echo "Running build with PATH: $(echo $PATH | tr ':' '\n' | grep -E '(node_modules|bin)' | head -5)"
-        npm run build
-      - |
-        # Determine S3 bucket name
-        S3_BUCKET_NAME="${S3_BUCKET}"
-        
-        # If not provided, try to fetch from Terraform outputs
-        if [ -z "${S3_BUCKET_NAME}" ] || [ "${S3_BUCKET_NAME}" = "" ]; then
-          echo "S3_BUCKET not provided, attempting to fetch from Terraform outputs..."
-          
-          # Navigate to infra directory
-          if [ -d "infra" ]; then
-            cd infra
-          elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
-            cd "${CODEBUILD_SRC_DIR}/infra"
-          elif [ -d "${CODEBUILD_SRC_DIR_TerraformDeployOutputDev}/infra" ]; then
-            cd "${CODEBUILD_SRC_DIR_TerraformDeployOutputDev}/infra"
-          fi
-          
-          # Initialize Terraform to read outputs (if in infra directory)
-          if [ -f "main.tf" ]; then
-            ENV="${TF_VAR_environment:-dev}"
-            terraform init -backend-config="bucket=agentic-retail-os-terraform-state" -backend-config="key=${ENV}/terraform.tfstate" -backend-config="region=us-east-1" -backend-config="encrypt=true" -backend-config="dynamodb_table=agentic-retail-os-terraform-locks" > /dev/null 2>&1 || true
-            S3_BUCKET_NAME=$(terraform output -raw web_bucket_id 2>/dev/null || echo "")
-            if [ ! -z "${S3_BUCKET_NAME}" ] && [ "${S3_BUCKET_NAME}" != "" ]; then
-              echo "Found S3 bucket from Terraform outputs: ${S3_BUCKET_NAME}"
-            fi
-            cd - > /dev/null 2>&1 || true
-          fi
-        fi
-        
-        # Final check
-        if [ -z "${S3_BUCKET_NAME}" ] || [ "${S3_BUCKET_NAME}" = "" ]; then
-          echo "ERROR: S3_BUCKET environment variable not set and could not fetch from Terraform outputs"
-          echo "Please provide S3_BUCKET parameter when deploying the pipeline, or ensure Terraform outputs are available"
-          exit 1
-        fi
-        
-        echo "Deploying to S3 bucket: ${S3_BUCKET_NAME}"
-        # Ensure we're in web directory for dist/ path
-        if [ -d "web" ]; then
-          cd web
-        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
-          cd "${CODEBUILD_SRC_DIR}/web"
-        fi
-        # dist/ should be in the web directory after npm run build
-        if [ -d "dist" ]; then
-          aws s3 sync dist/ s3://${S3_BUCKET_NAME}/ --delete
-          echo "Deployment complete"
-        else
-          echo "ERROR: dist/ directory not found. Build may have failed."
-          exit 1
-        fi
+        echo "Building web application..."
+        echo "Current directory: $(pwd)"
+        echo "PATH includes: $(echo $PATH | tr ':' '\n' | grep node_modules || echo 'none')"
+        echo "Checking binaries..."
+        which vite || echo "vite not found in PATH"
+        ls -la node_modules/.bin/vite 2>/dev/null || echo "vite binary not found"
+        npm run build || (echo "ERROR: Build failed" && exit 1)
+
   post_build:
     commands:
+      - . /tmp/env.sh
       - |
-        if [ ! -z "${CloudFrontDistributionId}" ] && [ "${CloudFrontDistributionId}" != "" ]; then
-          echo "Creating CloudFront invalidation..."
-          aws cloudfront create-invalidation --distribution-id ${CloudFrontDistributionId} --paths "/*"
-        else
-          echo "CloudFront distribution ID not provided, skipping invalidation"
+        # Fetch S3 bucket name and CloudFront distribution ID from Terraform outputs
+        echo "Fetching infrastructure details from Terraform outputs..."
+        
+        # Save current directory (web app build directory)
+        WEB_DIR=$(pwd)
+        
+        # Install Terraform if not already available
+        if ! command -v terraform &> /dev/null; then
+          echo "Installing Terraform to read outputs..."
+          wget -q https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
+          unzip -q terraform_1.6.0_linux_amd64.zip
+          chmod +x terraform
+          mv terraform /usr/local/bin/
         fi
+        
+        # Initialize Terraform and read outputs
+        # Navigate to infra directory
+        if [ -d "infra" ]; then
+          cd infra
+        elif [ -d "${CODEBUILD_SRC_DIR}/infra" ]; then
+          cd "${CODEBUILD_SRC_DIR}/infra"
+        else
+          echo "ERROR: Could not find infra directory"
+          exit 1
+        fi
+        
+        # Initialize Terraform with correct backend config
+        terraform init \
+          -backend-config="bucket=agentic-retail-os-terraform-state" \
+          -backend-config="key=${TF_VAR_environment}/terraform.tfstate" \
+          -backend-config="region=us-east-1" \
+          -backend-config="dynamodb_table=agentic-retail-os-terraform-locks" \
+          -backend-config="encrypt=true" > /dev/null 2>&1 || true
+        
+        # Get S3 bucket name
+        S3_BUCKET_NAME=""
+        if [ ! -z "${S3_BUCKET}" ] && [ "${S3_BUCKET}" != "" ]; then
+          S3_BUCKET_NAME="${S3_BUCKET}"
+          echo "Using S3 bucket name from parameter: $S3_BUCKET_NAME"
+        else
+          S3_BUCKET_NAME=$(terraform output -raw web_bucket_id 2>/dev/null || echo "")
+          if [ ! -z "$S3_BUCKET_NAME" ] && [ "$S3_BUCKET_NAME" != "" ]; then
+            echo "Found S3 bucket name from Terraform: $S3_BUCKET_NAME"
+          fi
+        fi
+        
+        # Get CloudFront distribution ID
+        DIST_ID=""
+        if [ ! -z "${CloudFrontDistributionId}" ] && [ "${CloudFrontDistributionId}" != "" ]; then
+          DIST_ID="${CloudFrontDistributionId}"
+          echo "Using CloudFront distribution ID from parameter: $DIST_ID"
+        else
+          DIST_ID=$(terraform output -raw cloudfront_web_distribution_id 2>/dev/null || echo "")
+          if [ ! -z "$DIST_ID" ] && [ "$DIST_ID" != "" ]; then
+            echo "Found CloudFront distribution ID from Terraform: $DIST_ID"
+          fi
+        fi
+        
+        # Return to web app directory and deploy to S3
+        if [ ! -z "$WEB_DIR" ] && [ -d "$WEB_DIR" ]; then
+          cd "$WEB_DIR"
+        elif [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        else
+          echo "ERROR: Could not find web directory for deployment"
+          exit 1
+        fi
+        
+        # Check if dist directory exists (build must have succeeded)
+        if [ ! -d "dist" ]; then
+          echo "ERROR: dist/ directory does not exist. Build must have failed."
+          exit 1
+        fi
+        
+        if [ ! -z "$S3_BUCKET_NAME" ] && [ "$S3_BUCKET_NAME" != "" ]; then
+          echo "Deploying to S3 bucket: $S3_BUCKET_NAME"
+          echo "Current directory: $(pwd)"
+          echo "Contents of dist/:"
+          ls -la dist/ || echo "dist/ directory is empty or inaccessible"
+          aws s3 sync dist/ s3://$S3_BUCKET_NAME/ --delete --exclude "*.map" || exit 1
+        else
+          echo "ERROR: S3 bucket name not available. Cannot deploy."
+          exit 1
+        fi
+        
+        # Invalidate CloudFront cache
+        if [ ! -z "$DIST_ID" ] && [ "$DIST_ID" != "" ]; then
+          echo "Creating CloudFront invalidation..."
+          if ! aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"; then
+            echo "WARNING: CloudFront invalidation failed, but deployment succeeded"
+          else
+            echo "CloudFront cache invalidation initiated successfully"
+          fi
+        else
+          echo "WARNING: CloudFront distribution ID not available, skipping invalidation"
+        fi
+
 artifacts:
   files:
     - '**/*'
   base-directory: dist
-
