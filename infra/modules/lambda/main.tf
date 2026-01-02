@@ -73,14 +73,15 @@ resource "aws_iam_role_policy" "dynamodb" {
 # Following AWS/Terraform best practices: use source_file pointing to actual code files
 # Each Lambda function has its own directory under code/
 locals {
-  code_dir  = var.code_directory != "" ? var.code_directory : "default"
-  code_file = "${path.module}/code/${local.code_dir}/lambda_function.py"
+  code_dir      = var.code_directory != "" ? var.code_directory : "default"
+  code_file     = "${path.module}/code/${local.code_dir}/lambda_function.py"
+  zip_file_path = "${path.module}/${var.function_name}.zip"
 }
 
 data "archive_file" "placeholder" {
   type        = "zip"
   source_file = local.code_file
-  output_path = "${path.module}/code/${local.code_dir}/${var.function_name}.zip"
+  output_path = local.zip_file_path
 }
 
 # Lambda Function
