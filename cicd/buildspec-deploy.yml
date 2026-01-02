@@ -401,6 +401,41 @@ phases:
           fi
           
           echo "Running terraform apply..."
+          
+          # CRITICAL: Recreate Lambda ZIP files before apply
+          # When using plan files, data.archive_file may not be re-evaluated, so we need to ensure ZIP files exist
+          # The ZIP files are created at ${path.module}/${function_name}.zip
+          # Since we're in the infra directory, path.module for the lambda module is modules/lambda
+          echo "Recreating Lambda ZIP files to ensure they exist for apply..."
+          if [ -d "modules/lambda/code" ]; then
+            for LAMBDA_DIR in modules/lambda/code/*/; do
+              if [ -d "$LAMBDA_DIR" ]; then
+                LAMBDA_NAME=$(basename "$LAMBDA_DIR")
+                # Function name format: ${TF_VAR_environment}-${LAMBDA_NAME}-service
+                FUNCTION_NAME="${TF_VAR_environment}-${LAMBDA_NAME}-service"
+                ZIP_FILE="modules/lambda/${FUNCTION_NAME}.zip"
+                echo "Creating ZIP for ${LAMBDA_NAME} -> ${ZIP_FILE}"
+                if [ -f "$LAMBDA_DIR/lambda_function.py" ]; then
+                  # Create ZIP in the modules/lambda directory to match path.module resolution
+                  cd modules/lambda
+                  zip -q "${FUNCTION_NAME}.zip" "code/${LAMBDA_NAME}/lambda_function.py" 2>/dev/null || echo "WARNING: Failed to create ZIP for ${LAMBDA_NAME}"
+                  cd ../..
+                  # Verify the file was created
+                  if [ -f "$ZIP_FILE" ]; then
+                    echo "Successfully created ${ZIP_FILE} ($(stat -f%z "$ZIP_FILE" 2>/dev/null || stat -c%s "$ZIP_FILE" 2>/dev/null || echo 'unknown') bytes)"
+                  else
+                    echo "ERROR: Failed to create ${ZIP_FILE}"
+                  fi
+                fi
+              fi
+            done
+          else
+            echo "WARNING: modules/lambda/code directory not found, skipping ZIP recreation"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la modules/ 2>/dev/null || echo "modules/ not found"
+          fi
+          
           # Try to use plan file from previous stage (passed via CodePipeline artifacts)
           # CodePipeline extracts input artifacts to CODEBUILD_SRC_DIR_<ArtifactName>
           # The plan file was saved to /codebuild/output/ in the plan stage, which becomes part of the artifact

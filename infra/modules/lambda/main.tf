@@ -69,19 +69,12 @@ resource "aws_iam_role_policy" "dynamodb" {
   })
 }
 
-# Create placeholder zip file from code directory
-# Following AWS/Terraform best practices: use source_file pointing to actual code files
-# Each Lambda function has its own directory under code/
+# Lambda ZIP files are created manually in CI/CD buildspecs (plan and deploy stages)
+# This ensures consistent paths and avoids plan/apply path resolution issues
 locals {
   code_dir      = var.code_directory != "" ? var.code_directory : "default"
   code_file     = "${path.module}/code/${local.code_dir}/lambda_function.py"
   zip_file_path = "${path.module}/${var.function_name}.zip"
-}
-
-data "archive_file" "placeholder" {
-  type        = "zip"
-  source_file = local.code_file
-  output_path = local.zip_file_path
 }
 
 # Lambda Function
@@ -93,10 +86,11 @@ resource "aws_lambda_function" "main" {
   timeout       = var.timeout
   memory_size   = var.memory_size
 
-  # Placeholder code - will be updated via CI/CD
-  # Use output_path directly - path.module is already absolute and stable across plan/apply
-  filename         = data.archive_file.placeholder.output_path
-  source_code_hash = data.archive_file.placeholder.output_base64sha256
+  # ZIP files are created manually in CI/CD before terraform plan/apply
+  # Use filebase64sha256 to compute hash for change detection
+  # Note: ZIP files must exist before terraform plan/apply (created in buildspecs)
+  filename         = local.zip_file_path
+  source_code_hash = filebase64sha256(local.zip_file_path)
 
   environment {
     variables = merge(

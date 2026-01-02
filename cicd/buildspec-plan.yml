@@ -421,6 +421,31 @@ phases:
             fi
             
             # Only run plan if init succeeded
+            # CRITICAL: Create Lambda ZIP files before plan (required for filebase64sha256)
+            echo "Creating Lambda ZIP files before terraform plan..."
+            if [ -d "modules/lambda/code" ]; then
+              for LAMBDA_DIR in modules/lambda/code/*/; do
+                if [ -d "$LAMBDA_DIR" ]; then
+                  LAMBDA_NAME=$(basename "$LAMBDA_DIR")
+                  FUNCTION_NAME="${TF_VAR_environment}-${LAMBDA_NAME}-service"
+                  ZIP_FILE="modules/lambda/${FUNCTION_NAME}.zip"
+                  echo "Creating ZIP for ${LAMBDA_NAME} -> ${ZIP_FILE}"
+                  if [ -f "$LAMBDA_DIR/lambda_function.py" ]; then
+                    cd modules/lambda
+                    zip -q "${FUNCTION_NAME}.zip" "code/${LAMBDA_NAME}/lambda_function.py" 2>/dev/null || echo "WARNING: Failed to create ZIP for ${LAMBDA_NAME}"
+                    cd ../..
+                    if [ -f "$ZIP_FILE" ]; then
+                      echo "Successfully created ${ZIP_FILE} ($(stat -f%z "$ZIP_FILE" 2>/dev/null || stat -c%s "$ZIP_FILE" 2>/dev/null || echo 'unknown') bytes)"
+                    else
+                      echo "ERROR: Failed to create ${ZIP_FILE}"
+                    fi
+                  fi
+                fi
+              done
+            else
+              echo "WARNING: modules/lambda/code directory not found, skipping ZIP creation"
+            fi
+            
             echo "Running terraform plan (after import checks)..."
             PLAN_EXIT_CODE=0
             terraform plan -var-file="environments/${TF_VAR_environment}/terraform.tfvars" -out=tfplan || PLAN_EXIT_CODE=$?
