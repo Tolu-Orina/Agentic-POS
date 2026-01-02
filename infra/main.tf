@@ -192,6 +192,60 @@ module "lambda_auth" {
   tags           = local.common_tags
 }
 
+# S3 Bucket Policy for Web Application - Allow CloudFront OAC Access
+resource "aws_s3_bucket_policy" "web" {
+  bucket = module.s3_web.bucket_id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontServicePrincipal"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${module.s3_web.bucket_arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = module.cloudfront_web.distribution_arn
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [module.cloudfront_web]
+}
+
+# S3 Bucket Policy for Images - Allow CloudFront OAC Access
+resource "aws_s3_bucket_policy" "images" {
+  bucket = module.s3_images.bucket_id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontServicePrincipal"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "s3:GetObject"
+        Resource = "${module.s3_images.bucket_arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = module.cloudfront_images.distribution_arn
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [module.cloudfront_images]
+}
+
 # IAM Module
 module "iam" {
   source = "./modules/iam"
