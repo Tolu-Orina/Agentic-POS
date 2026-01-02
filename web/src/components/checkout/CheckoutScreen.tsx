@@ -73,7 +73,7 @@ export default function CheckoutScreen() {
       setTimeout(() => {
         setAgentStatus({ status: 'idle' });
       }, 2000);
-    } catch (error) {
+    } catch {
       setAgentStatus({
         status: 'error',
         message: 'Failed to check inventory. Please try again.',
@@ -132,7 +132,7 @@ export default function CheckoutScreen() {
         setAgentStatus({ status: 'idle' });
         setProcessing(false);
       }, 1000);
-    } catch (error) {
+    } catch {
       setAgentStatus({
         status: 'error',
         message: 'Transaction failed. Please try again.',

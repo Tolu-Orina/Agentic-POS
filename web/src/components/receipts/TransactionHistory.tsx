@@ -3,7 +3,7 @@
  * Displays list of past transactions with search and filter
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -38,24 +38,7 @@ export default function TransactionHistory() {
     loadTransactions();
   }, []);
 
-  useEffect(() => {
-    filterTransactions();
-  }, [searchQuery, transactions]);
-
-  const loadTransactions = async () => {
-    try {
-      setLoading(true);
-      const data = await transactionService.getAll();
-      setTransactions(data);
-      setFilteredTransactions(data);
-    } catch (error) {
-      console.error('Failed to load transactions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterTransactions = () => {
+  const filterTransactions = useCallback(() => {
     if (!searchQuery.trim()) {
       setFilteredTransactions(transactions);
       return;
@@ -71,6 +54,23 @@ export default function TransactionHistory() {
         )
     );
     setFilteredTransactions(filtered);
+  }, [searchQuery, transactions]);
+
+  useEffect(() => {
+    filterTransactions();
+  }, [filterTransactions]);
+
+  const loadTransactions = async () => {
+    try {
+      setLoading(true);
+      const data = await transactionService.getAll();
+      setTransactions(data);
+      setFilteredTransactions(data);
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewReceipt = (transaction: Transaction) => {
