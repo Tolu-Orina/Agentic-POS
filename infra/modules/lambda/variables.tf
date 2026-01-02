@@ -3,6 +3,12 @@ variable "function_name" {
   type        = string
 }
 
+variable "code_directory" {
+  description = "Subdirectory name under code/ containing the Lambda function code (e.g., 'inventory', 'auth')"
+  type        = string
+  default     = ""
+}
+
 variable "handler" {
   description = "Lambda handler"
   type        = string

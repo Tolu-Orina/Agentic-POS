@@ -165,11 +165,12 @@ module "api_gateway" {
 module "lambda_inventory" {
   source = "./modules/lambda"
 
-  function_name = "${var.environment}-inventory-service"
-  handler       = "index.handler"
-  runtime       = "python3.11"
-  environment   = local.environment
-  tags          = local.common_tags
+  function_name  = "${var.environment}-inventory-service"
+  code_directory = "inventory"
+  handler        = "lambda_function.handler"
+  runtime        = "python3.13"
+  environment    = local.environment
+  tags           = local.common_tags
 
   # DynamoDB permissions
   dynamodb_table_arns = [
@@ -183,11 +184,12 @@ module "lambda_inventory" {
 module "lambda_auth" {
   source = "./modules/lambda"
 
-  function_name = "${var.environment}-auth-service"
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  environment   = local.environment
-  tags          = local.common_tags
+  function_name  = "${var.environment}-auth-service"
+  code_directory = "auth"
+  handler        = "lambda_function.handler"
+  runtime        = "python3.13"
+  environment    = local.environment
+  tags           = local.common_tags
 }
 
 # IAM Module

@@ -32,6 +32,8 @@ resource "aws_route53_record" "root" {
   name    = var.domain_name
   type    = "A"
 
+  allow_overwrite = true # Allow overwriting existing records
+
   alias {
     name                   = var.cloudfront_domain_name
     zone_id                = local.cloudfront_hosted_zone_id
@@ -44,6 +46,8 @@ resource "aws_route53_record" "www" {
   zone_id = local.zone_id
   name    = "www.${var.domain_name}"
   type    = "A"
+
+  allow_overwrite = true # Allow overwriting existing records
 
   alias {
     name                   = var.cloudfront_domain_name

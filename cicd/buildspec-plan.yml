@@ -395,6 +395,29 @@ phases:
               else
                 echo "No existing CloudFront distribution found with CNAME ${CF_DOMAIN}"
               fi
+              
+              # Import Route53 Records (if they exist)
+              HOSTED_ZONE_ID=$(grep -E "^hosted_zone_id\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
+              if [ ! -z "$HOSTED_ZONE_ID" ]; then
+                # Check for root domain A record
+                ROOT_RECORD_NAME="${CF_DOMAIN}."
+                if aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --query "ResourceRecordSets[?Name=='${ROOT_RECORD_NAME}' && Type=='A']" --output json 2>&1 | grep -q "\"Name\""; then
+                  if ! terraform state show "module.route53_web[0].aws_route53_record.root[0]" > /dev/null 2>&1; then
+                    echo "Importing Route53 root A record for ${CF_DOMAIN}..."
+                    # Route53 import format: ZONEID_RECORDNAME_TYPE
+                    terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.route53_web[0].aws_route53_record.root[0]" "${HOSTED_ZONE_ID}_${ROOT_RECORD_NAME}_A" 2>&1 || echo "WARNING: Failed to import Route53 root record"
+                  fi
+                fi
+                
+                # Check for www subdomain A record
+                WWW_RECORD_NAME="www.${CF_DOMAIN}."
+                if aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --query "ResourceRecordSets[?Name=='${WWW_RECORD_NAME}' && Type=='A']" --output json 2>&1 | grep -q "\"Name\""; then
+                  if ! terraform state show "module.route53_web[0].aws_route53_record.www[0]" > /dev/null 2>&1; then
+                    echo "Importing Route53 www A record for www.${CF_DOMAIN}..."
+                    terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.route53_web[0].aws_route53_record.www[0]" "${HOSTED_ZONE_ID}_${WWW_RECORD_NAME}_A" 2>&1 || echo "WARNING: Failed to import Route53 www record"
+                  fi
+                fi
+              fi
             fi
             
             # Only run plan if init succeeded

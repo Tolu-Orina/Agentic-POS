@@ -80,8 +80,6 @@ datasets/**/image_generation.log
 datasets/**/product_images/*.png
 !datasets/**/product_images/.gitkeep
 
-# Lambda placeholder
-infra/modules/lambda/placeholder.zip
 
 # Temporary files
 *.tmp
