@@ -70,10 +70,10 @@ resource "aws_iam_role_policy" "dynamodb" {
 }
 
 # Create placeholder zip file
-# Use /tmp directory which is always available in CodeBuild/Linux environments
+# Use path.cwd to create in the current working directory (infra/) which is writable in CodeBuild
 data "archive_file" "placeholder" {
   type        = "zip"
-  output_path = "/tmp/placeholder-${var.function_name}.zip"
+  output_path = "${path.cwd}/placeholder-${var.function_name}.zip"
 
   source {
     content  = var.runtime == "nodejs20.x" ? "exports.handler = async (event) => { return { statusCode: 200, body: JSON.stringify({ message: 'Placeholder - deploy via CI/CD' }) }; };" : "def handler(event, context):\n    return {'statusCode': 200, 'body': 'Placeholder - deploy via CI/CD'}"

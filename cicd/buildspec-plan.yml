@@ -155,9 +155,11 @@ phases:
             # This ensures the plan reflects current state accurately
             echo "Checking for existing resources that may need import..."
             
-            # Read bucket name and distribution name from terraform.tfvars
+            # Read bucket names and distribution name from terraform.tfvars
             BUCKET_NAME=$(grep -E "^web_bucket_name\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
+            IMAGES_BUCKET_NAME=$(grep -E "^images_bucket_name\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
             DIST_NAME=$(grep -E "^distribution_name\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
+            BASE_DOMAIN=$(grep -E "^base_domain\s*=" "environments/${TF_VAR_environment}/terraform.tfvars" 2>/dev/null | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ' || echo "")
             
             if [ ! -z "$BUCKET_NAME" ]; then
               # Try to import S3 bucket if it exists and isn't in state
@@ -352,12 +354,46 @@ phases:
               fi
             done
             
+            # Import S3 Images Bucket
+            if [ ! -z "$IMAGES_BUCKET_NAME" ]; then
+              if aws s3api head-bucket --bucket "$IMAGES_BUCKET_NAME" 2>&1 > /dev/null; then
+                if ! terraform state show "module.s3_images.aws_s3_bucket.web" > /dev/null 2>&1; then
+                  echo "Importing S3 images bucket ${IMAGES_BUCKET_NAME}..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.s3_images.aws_s3_bucket.web" "$IMAGES_BUCKET_NAME" 2>&1 || echo "WARNING: Failed to import images bucket ${IMAGES_BUCKET_NAME}"
+                fi
+              fi
+            fi
+            
             # Import S3 Log Bucket
             LOG_BUCKET_NAME="agentic-retail-os-logs-${TF_VAR_environment}"
             if aws s3api head-bucket --bucket "$LOG_BUCKET_NAME" 2>&1 > /dev/null; then
               if ! terraform state show "module.s3_logs[0].aws_s3_bucket.web" > /dev/null 2>&1; then
                 echo "Importing S3 log bucket ${LOG_BUCKET_NAME}..."
                 terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.s3_logs[0].aws_s3_bucket.web" "$LOG_BUCKET_NAME" 2>&1 || echo "WARNING: Failed to import log bucket ${LOG_BUCKET_NAME}"
+              fi
+            fi
+            
+            # Import CloudFront Distributions (check by CNAME/domain)
+            if [ ! -z "$BASE_DOMAIN" ]; then
+              # Determine the actual domain name based on environment
+              if [ "$TF_VAR_environment" = "prod" ]; then
+                CF_DOMAIN="$BASE_DOMAIN"
+              else
+                CF_DOMAIN="${TF_VAR_environment}.${BASE_DOMAIN}"
+              fi
+              
+              # Find CloudFront distribution by CNAME
+              echo "Checking for existing CloudFront distribution with CNAME ${CF_DOMAIN}..."
+              CF_DIST_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Aliases.Items[?@=='${CF_DOMAIN}']].Id" --output text 2>&1 | head -1 | tr -d '\n' | tr -d ' ' | tr -d '\t' | tr -d '\r')
+              
+              if [ ! -z "$CF_DIST_ID" ] && [ "$CF_DIST_ID" != "None" ] && [ "$CF_DIST_ID" != "" ] && [ "${#CF_DIST_ID}" -lt 20 ]; then
+                echo "Found existing CloudFront distribution ${CF_DIST_ID} with CNAME ${CF_DOMAIN}"
+                if ! terraform state show "module.cloudfront_web.aws_cloudfront_distribution.web" > /dev/null 2>&1; then
+                  echo "Importing CloudFront distribution ${CF_DIST_ID}..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.cloudfront_web.aws_cloudfront_distribution.web" "$CF_DIST_ID" 2>&1 || echo "WARNING: Failed to import CloudFront distribution ${CF_DIST_ID}"
+                fi
+              else
+                echo "No existing CloudFront distribution found with CNAME ${CF_DOMAIN}"
               fi
             fi
             
