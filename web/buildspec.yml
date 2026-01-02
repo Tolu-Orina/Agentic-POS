@@ -38,6 +38,19 @@ phases:
         elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
           cd "${CODEBUILD_SRC_DIR}/web"
         fi
+        echo "Current directory: $(pwd)"
+        echo "Checking for node_modules and TypeScript..."
+        if [ -f "node_modules/.bin/tsc" ]; then
+          echo "TypeScript found in node_modules/.bin/tsc"
+        else
+          echo "ERROR: TypeScript not found. Checking node_modules..."
+          ls -la node_modules/.bin/ 2>/dev/null | head -10 || echo "node_modules/.bin/ does not exist"
+          echo "Re-running npm install to ensure dev dependencies are installed..."
+          npm install
+        fi
+        # Explicitly add node_modules/.bin to PATH (npm should do this, but being explicit)
+        export PATH="$(pwd)/node_modules/.bin:$PATH"
+        echo "Running build with PATH: $(echo $PATH | tr ':' '\n' | grep -E '(node_modules|bin)' | head -5)"
         npm run build
       - |
         # Determine S3 bucket name
