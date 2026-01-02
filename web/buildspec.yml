@@ -3,13 +3,42 @@ phases:
   install:
     commands:
       - echo "Installing Node.js dependencies..."
-      - npm ci
+      - |
+        # Navigate to web directory (handle different source locations)
+        if [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        else
+          echo "ERROR: Could not find web directory"
+          echo "CODEBUILD_SRC_DIR: ${CODEBUILD_SRC_DIR}"
+          ls -la
+          exit 1
+        fi
+        echo "Current directory: $(pwd)"
+        echo "Checking for package.json and package-lock.json..."
+        ls -la package.json package-lock.json 2>/dev/null || echo "WARNING: package files not found"
+        npm ci
   pre_build:
     commands:
-      - echo "Building web application..."
+      - |
+        # Ensure we're in web directory
+        if [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        fi
+        echo "Building web application..."
   build:
     commands:
-      - npm run build
+      - |
+        # Ensure we're in web directory
+        if [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        fi
+        npm run build
       - |
         # Determine S3 bucket name
         S3_BUCKET_NAME="${S3_BUCKET}"
@@ -47,8 +76,20 @@ phases:
         fi
         
         echo "Deploying to S3 bucket: ${S3_BUCKET_NAME}"
-        aws s3 sync dist/ s3://${S3_BUCKET_NAME}/ --delete
-        echo "Deployment complete"
+        # Ensure we're in web directory for dist/ path
+        if [ -d "web" ]; then
+          cd web
+        elif [ -d "${CODEBUILD_SRC_DIR}/web" ]; then
+          cd "${CODEBUILD_SRC_DIR}/web"
+        fi
+        # dist/ should be in the web directory after npm run build
+        if [ -d "dist" ]; then
+          aws s3 sync dist/ s3://${S3_BUCKET_NAME}/ --delete
+          echo "Deployment complete"
+        else
+          echo "ERROR: dist/ directory not found. Build may have failed."
+          exit 1
+        fi
   post_build:
     commands:
       - |
