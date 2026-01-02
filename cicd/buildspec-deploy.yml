@@ -231,6 +231,100 @@ phases:
                 fi
               fi
             fi
+            
+            # Emergency import for additional CloudFront OACs (web and images)
+            for OAC_NAME in "agentic-retail-os-web-${TF_VAR_environment}-oac" "agentic-retail-os-images-${TF_VAR_environment}-oac"; do
+              OAC_ID=$(aws cloudfront list-origin-access-controls --query "OriginAccessControlList.Items[?Name=='${OAC_NAME}'].Id" --output text 2>&1 | head -1 | tr -d '\n' | tr -d ' ' | tr -d '\t' | tr -d '\r')
+              if [ ! -z "$OAC_ID" ] && [ "$OAC_ID" != "None" ] && [ "$OAC_ID" != "" ] && [ "${#OAC_ID}" -lt 50 ]; then
+                if echo "$OAC_NAME" | grep -q "web"; then
+                  STATE_PATH="module.cloudfront_web.aws_cloudfront_origin_access_control.s3_oac"
+                else
+                  STATE_PATH="module.cloudfront_images.aws_cloudfront_origin_access_control.s3_oac"
+                fi
+                if ! terraform state show "$STATE_PATH" > /dev/null 2>&1; then
+                  echo "WARNING: CloudFront OAC ${OAC_NAME} exists but not in state (attempting emergency import)..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "$STATE_PATH" "$OAC_ID" 2>&1 || echo "WARNING: Failed to import OAC ${OAC_NAME}"
+                fi
+              fi
+            done
+            
+            # Emergency import for DynamoDB Tables
+            for TABLE_NAME in "${TF_VAR_environment}-Products" "${TF_VAR_environment}-Transactions" "${TF_VAR_environment}-Inventory_Logs" "${TF_VAR_environment}-Restock_Requests" "${TF_VAR_environment}-Invoices"; do
+              if aws dynamodb describe-table --table-name "$TABLE_NAME" > /dev/null 2>&1; then
+                case "$TABLE_NAME" in
+                  *Products)
+                    STATE_PATH="module.dynamodb.aws_dynamodb_table.products"
+                    ;;
+                  *Transactions)
+                    STATE_PATH="module.dynamodb.aws_dynamodb_table.transactions"
+                    ;;
+                  *Inventory_Logs)
+                    STATE_PATH="module.dynamodb.aws_dynamodb_table.inventory_logs"
+                    ;;
+                  *Restock_Requests)
+                    STATE_PATH="module.dynamodb.aws_dynamodb_table.restock_requests"
+                    ;;
+                  *Invoices)
+                    STATE_PATH="module.dynamodb.aws_dynamodb_table.invoices"
+                    ;;
+                esac
+                if ! terraform state show "$STATE_PATH" > /dev/null 2>&1; then
+                  echo "WARNING: DynamoDB table ${TABLE_NAME} exists but not in state (attempting emergency import)..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "$STATE_PATH" "$TABLE_NAME" 2>&1 || echo "WARNING: Failed to import table ${TABLE_NAME}"
+                fi
+              fi
+            done
+            
+            # Emergency import for IAM Roles
+            for ROLE_NAME in "${TF_VAR_environment}-inventory-service-role" "${TF_VAR_environment}-auth-service-role" "agentic-retail-os-${TF_VAR_environment}-codebuild-deploy-role"; do
+              if aws iam get-role --role-name "$ROLE_NAME" > /dev/null 2>&1; then
+                case "$ROLE_NAME" in
+                  *inventory-service-role)
+                    STATE_PATH="module.lambda_inventory.aws_iam_role.lambda"
+                    ;;
+                  *auth-service-role)
+                    STATE_PATH="module.lambda_auth.aws_iam_role.lambda"
+                    ;;
+                  *codebuild-deploy-role)
+                    STATE_PATH="module.iam.aws_iam_role.codebuild_deploy"
+                    ;;
+                esac
+                if ! terraform state show "$STATE_PATH" > /dev/null 2>&1; then
+                  echo "WARNING: IAM role ${ROLE_NAME} exists but not in state (attempting emergency import)..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "$STATE_PATH" "$ROLE_NAME" 2>&1 || echo "WARNING: Failed to import role ${ROLE_NAME}"
+                fi
+              fi
+            done
+            
+            # Emergency import for CloudWatch Log Groups
+            for LOG_GROUP in "/aws/apigateway/${TF_VAR_environment}-agentic-retail-os" "/aws/lambda/${TF_VAR_environment}-inventory-service" "/aws/lambda/${TF_VAR_environment}-auth-service"; do
+              if aws logs describe-log-groups --log-group-name-prefix "$LOG_GROUP" --query "logGroups[?logGroupName=='${LOG_GROUP}']" --output text | grep -q "$LOG_GROUP"; then
+                case "$LOG_GROUP" in
+                  */apigateway/*)
+                    STATE_PATH="module.api_gateway.aws_cloudwatch_log_group.api_gateway"
+                    ;;
+                  */lambda/*inventory*)
+                    STATE_PATH="module.lambda_inventory.aws_cloudwatch_log_group.lambda"
+                    ;;
+                  */lambda/*auth*)
+                    STATE_PATH="module.lambda_auth.aws_cloudwatch_log_group.lambda"
+                    ;;
+                esac
+                if ! terraform state show "$STATE_PATH" > /dev/null 2>&1; then
+                  echo "WARNING: CloudWatch Log Group ${LOG_GROUP} exists but not in state (attempting emergency import)..."
+                  terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "$STATE_PATH" "$LOG_GROUP" 2>&1 || echo "WARNING: Failed to import log group ${LOG_GROUP}"
+                fi
+              fi
+            done
+            
+            # Emergency import for S3 Log Bucket
+            LOG_BUCKET_NAME="agentic-retail-os-logs-${TF_VAR_environment}"
+            if aws s3api head-bucket --bucket "$LOG_BUCKET_NAME" 2>&1 > /dev/null; then
+              if ! terraform state show "module.s3_logs[0].aws_s3_bucket.web" > /dev/null 2>&1; then
+                echo "WARNING: S3 log bucket ${LOG_BUCKET_NAME} exists but not in state (attempting emergency import)..."
+                terraform import -var-file="environments/${TF_VAR_environment}/terraform.tfvars" "module.s3_logs[0].aws_s3_bucket.web" "$LOG_BUCKET_NAME" 2>&1 || echo "WARNING: Failed to import log bucket ${LOG_BUCKET_NAME}"
+              fi
+            fi
           fi
         else
           # Save navigation failure to file
