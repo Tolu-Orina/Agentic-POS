@@ -94,7 +94,8 @@ resource "aws_lambda_function" "main" {
   memory_size   = var.memory_size
 
   # Placeholder code - will be updated via CI/CD
-  filename         = data.archive_file.placeholder.output_path
+  # Use abspath to ensure absolute path resolution (critical for CodeBuild/plan files)
+  filename         = abspath(data.archive_file.placeholder.output_path)
   source_code_hash = data.archive_file.placeholder.output_base64sha256
 
   environment {
